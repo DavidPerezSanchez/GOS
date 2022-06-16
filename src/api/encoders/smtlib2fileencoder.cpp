@@ -68,7 +68,11 @@ bool SMTLIB2FileEncoder::checkSAT(int lb, int ub){
 		exit(BADARGUMENTS_ERROR);
 	}
 
-   std::shared_ptr<FILE> pipe(popen(sentence.c_str(),"r"), pclose);
+#ifdef _WIN32
+	std::shared_ptr<FILE> pipe(_popen(sentence.c_str(), "r"), _pclose);
+#else
+	std::shared_ptr<FILE> pipe(popen(sentence.c_str(), "r"), pclose);
+#endif
     if (!pipe) throw std::runtime_error("popen() failed!");
     while (!feof(pipe.get())) {
         if (fgets(buffer.data(), 512, pipe.get()) != nullptr)
