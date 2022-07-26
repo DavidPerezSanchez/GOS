@@ -5,29 +5,33 @@
 #ifndef CSP2SAT_PARAM_H
 #define CSP2SAT_PARAM_H
 
-#include <vector>
-#include <string>
-#include <map>
 #include <regex>
 #include <iostream>
+#include <memory>
 #include "../../Errors/GOSException.h"
 #include "../../Errors/GOSInputExceptionsRepository.h"
+#include <string>
+#include <vector>
+#include <map>
 
-using namespace std;
+namespace GOS {
 
 class Param {
 public:
-    Param(const string &name) : name(name) {}
+    Param(const std::string &name) : name(name) {}
+    virtual ~Param() {};
 
     virtual bool isValuable() = 0;
 
 public:
-    string name;
+    std::string name;
 };
+typedef std::shared_ptr<Param> ParamRef;
 
 class ParamValuable : public Param {
 public:
-    ParamValuable(const string &name) : Param(name) {}
+    ParamValuable(const std::string &name) : Param(name) {}
+    virtual ~ParamValuable() {};
 
     bool isValuable() override {
         return true;
@@ -35,54 +39,71 @@ public:
 
     virtual int getValue() = 0;
 };
+typedef std::shared_ptr<ParamValuable> ParamValuableRef;
 
+class ParamBool;
+typedef std::shared_ptr<ParamBool> ParamBoolRef;
 class ParamBool : public ParamValuable {
 public:
-    ParamBool(const string &name, bool val) : ParamValuable(name) {
-        this->value = val;
+    static ParamBoolRef Create(const std::string &name, bool val) {
+        return std::shared_ptr<ParamBool>(new ParamBool(name, val));
     }
     int getValue() override {
         return value;
     }
-    bool value;
+    bool value; // TODO should be protected/private
+
+protected:
+    ParamBool(const std::string &name, bool val) : ParamValuable(name) {
+        this->value = val;
+    }
 };
 
-
+class ParamInt;
+typedef std::shared_ptr<ParamInt> ParamIntRef;
 class ParamInt : public ParamValuable {
 public:
-    ParamInt(const string &name, int val) : ParamValuable(name) {
-        this->value = val;
+    static ParamIntRef Create(const std::string &name, int val) {
+        return std::shared_ptr<ParamInt>(new ParamInt(name, val));
     }
     int getValue() override {
         return value;
     }
-    int value;
+    int value; // TODO should be protected/private
+
+protected:
+    ParamInt(const std::string &name, int val) : ParamValuable(name) {
+        this->value = val;
+    }
 };
 
 class ParamScoped : public Param {
 public:
-    ParamScoped(const string &name) : Param(name) {}
-
+    ParamScoped(const std::string &name) : Param(name) {}
+    virtual ~ParamScoped() {};
+    
     bool isValuable() override {
         return false;
     }
 
-    virtual void add(Param * a) = 0;
-    virtual Param * get(string name) = 0;
+    virtual void add(ParamRef a) = 0;
+    virtual ParamRef get(std::string name) = 0;
 };
+typedef std::shared_ptr<ParamScoped> ParamScopedRef;
 
+class ParamArray;
+typedef std::shared_ptr<ParamArray> ParamArrayRef;
 class ParamArray : public ParamScoped {
 public:
-    ParamArray(const string &name) : ParamScoped(name) {
-        elements = vector<Param*>();
+    static ParamArrayRef Create(const std::string &name) {
+        return std::shared_ptr<ParamArray>(new ParamArray(name));
     }
 
-    void add(Param *a) override {
+    void add(ParamRef a) override {
         elements.push_back(a);
     }
 
-    Param *get(string name) override {
-
+    ParamRef get(std::string name) override {
         int index = stoi(name);
         if(index < elements.size()){
             return elements[index];
@@ -90,38 +111,44 @@ public:
         return nullptr;
     }
 
-    vector<Param*> elements;
+    std::vector<ParamRef> elements; // TODO should be protected/private
+
+protected:
+    ParamArray(const std::string &name) : ParamScoped(name) {
+        elements = std::vector<ParamRef>();
+    }
 };
 
-
-class ParamJSON : public ParamScoped {
+class ParamJSON;
+typedef std::shared_ptr<ParamJSON> ParamJSONRef;
+class ParamJSON : public ParamScoped, public std::enable_shared_from_this<ParamJSON> {
 public:
-    ParamJSON(const string &name) : ParamScoped(name) {
-        elements = map<string, Param*>();
+    static ParamJSONRef Create(const std::string &name) {
+        return std::shared_ptr<ParamJSON>(new ParamJSON(name));
     }
 
-    void add(Param *a) override {
+    void add(ParamRef a) override {
         elements[a->name] = a;
     }
 
-    Param *get(string name) override {
+    ParamRef get(std::string name) override {
         if(elements.find(name) != elements.end())
             return elements[name];
         return nullptr;
     }
 
-    map<string, Param*> elements;
+    std::map<std::string, ParamRef> elements;
 
-    int resolve(string attrAccess) {
-        vector<string> splitted = Helpers::splitVarAccessNested(attrAccess);
+    int resolve(std::string attrAccess) {
+        std::vector<std::string> splitted = Utils::splitVarAccessNested(attrAccess);
 
-        string currAccess = "";
+        std::string currAccess = "";
 
         bool first = true;
 
-        ParamScoped * currentScope = this;
-        for(string attr : splitted){
-            Param * currentParam = nullptr;
+        ParamScopedRef currentScope = shared_from_this();
+        for(std::string attr : splitted){
+            ParamRef currentParam;
             if(attr.back() == ']'){
                 currentParam = currentScope->get(attr.substr(0, attr.size()-1));
                 currAccess += "[" + attr.substr(0, attr.size()-1) + "]";
@@ -130,23 +157,25 @@ public:
                 currentParam = currentScope->get(attr);
                 currAccess += (first ? "" : ".") + attr;
             }
+
             if(currentParam == nullptr) {
                 throw CSP2SATInputNotFoundValue(currAccess);
             };
-            if(currentParam->isValuable())
-                return ((ParamValuable*) currentParam)->getValue();
 
-            currentScope = (ParamScoped*) currentParam;
+            if(currentParam->isValuable())
+                return std::dynamic_pointer_cast<ParamValuable>(currentParam)->getValue();
+
+            currentScope = std::dynamic_pointer_cast<ParamScoped>(currentParam);
             first = false;
         }
         return -1;
     }
+protected:
+    ParamJSON(const std::string &name) : ParamScoped(name) {
+        elements = std::map<std::string, ParamRef>();
+    }
 };
 
-
-
-
-
-
+}
 
 #endif //CSP2SAT_PARAM_H

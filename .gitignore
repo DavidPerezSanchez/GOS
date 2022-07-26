@@ -1,6 +1,11 @@
-cmake-build-debug
+cmake-build-*
+build*
 .idea
+.vs
+.vscode
 .DS_Store
+.antlr
 gen
 deps/antlr/.nosync
 build
+build_debug

@@ -7,17 +7,22 @@
 
 
 #include <iostream>
-#include "Scope/GlobalScope.h"
+#include "Scope.h"
 #include "Symbol/BuiltInTypeSymbol.h"
-#include "smtformula.h"
+#include "../api/smtformula.h"
 #include "Symbol/Scoped/ScopedSymbol.h"
-#include "Value/Value.h"
 #include "Symbol/Valued/AssignableSymbol.h"
+#include "Value.h"
+#include "Symbol/Symbol.h"
+#include "../GOSUtils.h"
+#include <map>
+#include <string>
+#include <utility>
+
+namespace GOS {
 
 class SymbolTable {
-
 public:
-
     //Flag to indicate if the flow is defining entities.
     static bool entityDefinitionBlock;
 
@@ -28,16 +33,16 @@ public:
     static const int tVarBool = 4;
     static const int tString = 5;
     static const int tFormula = 5;
-    GlobalScope * gloabls;
+    GlobalScopeRef gloabls;
 
-    static BuiltInTypeSymbol *_integer;
-    static BuiltInTypeSymbol *_boolean;
-    static BuiltInTypeSymbol *_varbool;
-    static BuiltInTypeSymbol *_string;
-    static BuiltInTypeSymbol *_formula;
+    static BuiltInTypeSymbolRef _integer;
+    static BuiltInTypeSymbolRef _boolean;
+    static BuiltInTypeSymbolRef _varbool;
+    static BuiltInTypeSymbolRef _string;
+    static BuiltInTypeSymbolRef _formula;
 
     SymbolTable(){
-        gloabls = new GlobalScope();
+        gloabls = GlobalScope::Create();
         this->gloabls->define(_integer);
         this->gloabls->define(_boolean);
         this->gloabls->define(_varbool);
@@ -52,18 +57,18 @@ public:
     static bool errors;
 
 private:
-    static void iShowAllDefinedVariable(Scope * currentScope, const string& prefix = ""){
-        map<string, Symbol*> currentScopeSymbols = currentScope->getScopeSymbols();
+    static void iShowAllDefinedVariable(ScopeRef currentScope, const std::string& prefix = ""){
+        std::map<std::string, SymbolRef> currentScopeSymbols = currentScope->getScopeSymbols();
 
-        for(pair<string, Symbol *> sym : currentScopeSymbols){
-            if(sym.second->type){
-                if(sym.second->type->getTypeIndex() == SymbolTable::tCustom || sym.second->type->getTypeIndex() == SymbolTable::tArray)
+        for(std::pair<std::string, SymbolRef> sym : currentScopeSymbols){
+            if(sym.second->getType()){
+                if(sym.second->getType()->getTypeIndex() == SymbolTable::tCustom || sym.second->getType()->getTypeIndex() == SymbolTable::tArray)
                     if(!isdigit(sym.first[0]))
-                        iShowAllDefinedVariable( (ScopedSymbol*) sym.second, prefix + "." + sym.first );
+                        iShowAllDefinedVariable( Utils::as<ScopedSymbol>(sym.second), prefix + "." + sym.first );
                     else
-                        iShowAllDefinedVariable( (ScopedSymbol*) sym.second, isdigit(sym.first[0]) ? prefix + "[" + sym.first + "]" : prefix + sym.first);
+                        iShowAllDefinedVariable( Utils::as<ScopedSymbol>(sym.second), isdigit(sym.first[0]) ? prefix + "[" + sym.first + "]" : prefix + sym.first);
                 else{
-                    string output = sym.second->type->getTypeIndex() != SymbolTable::tVarBool ?  "param -> " : "var -> ";
+                    std::string output = sym.second->getType()->getTypeIndex() != SymbolTable::tVarBool ?  "param -> " : "var -> ";
                     if(!prefix.empty() && prefix[0] == '.')
                         output += prefix.substr(1, prefix.length()-1);
                     else
@@ -76,32 +81,32 @@ private:
                         output += "." + sym.first ;
                     }
 
-                    if(sym.second->type->getTypeIndex() != SymbolTable::tVarBool){
-                        Value * val = ((AssignableSymbol*)sym.second)->getValue();
-                        cout << output  << " -> " << (val ? to_string(val->getRealValue()) : "_") << endl;
+                    if(sym.second->getType()->getTypeIndex() != SymbolTable::tVarBool){
+                        ValueRef val = Utils::as<AssignableSymbol>(sym.second)->getValue();
+                        std::cout << output  << " -> " << (val ? std::to_string(val->getRealValue()) : "_") << std::endl;
                     }
                     else {
-                        cout << output  << endl;
+                        std::cout << output  << std::endl;
                     }
 
                 }
             }
             else {
-                cout << "defined type -> " << prefix +  sym.first << endl;
+                std::cout << "defined type -> " << prefix +  sym.first << std::endl;
             }
         }
     }
 
 };
 
-BuiltInTypeSymbol * SymbolTable::_integer = new BuiltInTypeSymbol("int", SymbolTable::tInt);
-BuiltInTypeSymbol * SymbolTable::_boolean = new BuiltInTypeSymbol("bool", SymbolTable::tBool);
-BuiltInTypeSymbol * SymbolTable::_varbool = new BuiltInTypeSymbol("varbool", SymbolTable::tVarBool);
-BuiltInTypeSymbol * SymbolTable::_string = new BuiltInTypeSymbol("string", SymbolTable::tString);
-BuiltInTypeSymbol * SymbolTable::_formula = new BuiltInTypeSymbol("formula", SymbolTable::tFormula);
+BuiltInTypeSymbolRef SymbolTable::_integer = BuiltInTypeSymbol::Create("int", SymbolTable::tInt);
+BuiltInTypeSymbolRef SymbolTable::_boolean = BuiltInTypeSymbol::Create("bool", SymbolTable::tBool);
+BuiltInTypeSymbolRef SymbolTable::_varbool = BuiltInTypeSymbol::Create("varbool", SymbolTable::tVarBool);
+BuiltInTypeSymbolRef SymbolTable::_string = BuiltInTypeSymbol::Create("string", SymbolTable::tString);
+BuiltInTypeSymbolRef SymbolTable::_formula = BuiltInTypeSymbol::Create("formula", SymbolTable::tFormula);
 bool SymbolTable::entityDefinitionBlock = false;
 bool SymbolTable::errors = false;
 
-
+}
 
 #endif //CSP2SAT_SYMBOLTABLE_H

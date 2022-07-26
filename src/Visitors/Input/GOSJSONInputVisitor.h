@@ -8,53 +8,54 @@
 #include <JSONBaseVisitor.h>
 #include "Param.h"
 #include "../../Errors/GOSInputExceptionsRepository.h"
+#include <string>
+#include <utility>
 
-
-using namespace GOS;
-using namespace std;
+namespace GOS {
 
 class GOSJSONInputVisitor : public JSONBaseVisitor {
 
 private:
-    ParamJSON *base;
-    ParamScoped *current;
+    ParamJSONRef base;
+    ParamScopedRef current;
 
 public:
 
     GOSJSONInputVisitor() {
-        base = new ParamJSON("base");
+        base = ParamJSON::Create("base");
         current = base;
     }
 
 
     antlrcpp::Any visitPair(JSONParser::PairContext *ctx) override {
-        string varName = ctx->STRING()->getText();
+        std::string varName = ctx->STRING()->getText();
         varName.erase(remove(varName.begin(), varName.end(), '"'), varName.end());
 
-        ParamScoped *curr = current;
+        ParamScopedRef curr = current;
         if (ctx->value()->NUMBER()) {
             current->add(
-                    new ParamInt(
+                    ParamInt::Create(
                             varName,
                             stoi(ctx->value()->NUMBER()->getText())
                     )
             );
         } else if (ctx->value()->getText() == "true" || ctx->value()->getText() == "false") {
             current->add(
-                    new ParamBool(
+                    ParamBool::Create(
                             varName,
                             ctx->value()->getText() == "true"
                     )
             );
         } else if (ctx->value()->arr()) {
-            ParamArray *array = new ParamArray(varName);
+            ParamArrayRef array = ParamArray::Create(varName);
             current->add(array);
+            // TODO Why not add(visit(ctx->value()->arr()))?? (if visit returned the appropiate object instead of nullptr)
             current = array;
             visit(ctx->value()->arr());
             current = curr;
 
         } else if (ctx->value()->obj()) {
-            ParamJSON *strct = new ParamJSON(varName);
+            ParamJSONRef strct = ParamJSON::Create(varName);
             current->add(strct);
             current = strct;
             visit(ctx->value()->obj());
@@ -73,25 +74,25 @@ public:
 
     antlrcpp::Any visitArr(JSONParser::ArrContext *ctx) override {
         int index = 0;
-        ParamScoped *curr = current;
+        ParamScopedRef curr = current;
         for (auto currVal : ctx->value()) {
             if (currVal->NUMBER()) {
                 current->add(
-                        new ParamInt(
-                                to_string(index),
+                        ParamInt::Create(
+                                std::to_string(index),
                                 stoi(currVal->NUMBER()->getText())
                         )
                 );
                 index++;
             } else if (currVal->getText() == "true" || currVal->getText() == "false") {
                 current->add(
-                        new ParamBool(
-                                to_string(index),
+                        ParamBool::Create(
+                                std::to_string(index),
                                 currVal->getText() == "true"
                         )
                 );
             } else if (currVal->arr()) {
-                ParamArray *array = new ParamArray(to_string(index));
+                ParamArrayRef array = ParamArray::Create(std::to_string(index));
                 current->add(array);
                 current = array;
                 visit(currVal->arr());
@@ -99,7 +100,7 @@ public:
                 index++;
 
             } else if (currVal->obj()) {
-                ParamJSON *strct = new ParamJSON(to_string(index));
+                ParamJSONRef strct = ParamJSON::Create(std::to_string(index));
                 current->add(strct);
                 current = strct;
                 visit(currVal->obj());
@@ -109,7 +110,7 @@ public:
                 throw CSP2SATBadInputTypeException(
                         ctx->start->getLine(),
                         ctx->start->getCharPositionInLine(),
-                        to_string(index)
+                        std::to_string(index)
                 );
 
             }
@@ -123,5 +124,6 @@ public:
     }
 };
 
+}
 
 #endif //CSP2SAT_GOSJSONINPUTVISITOR_H

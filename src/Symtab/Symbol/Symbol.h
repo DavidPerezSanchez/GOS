@@ -5,20 +5,33 @@
 #ifndef CSP2SAT_SYMBOL_H
 #define CSP2SAT_SYMBOL_H
 
+#include <string>
+#include <utility>
+#include <memory>
 
-
-using namespace std;
+namespace GOS {
 
 class Scope;
+typedef std::shared_ptr<Scope> ScopeRef;
 class Type;
+typedef std::shared_ptr<Type> TypeRef;
 
+class Symbol;
+typedef std::shared_ptr<Symbol> SymbolRef;
 class Symbol {
 public:
-    Symbol(string name) : name(move(name)) {} //For constructing Type symbols
-    Symbol(string name, Type *type) : name(move(name)), type(type) {} //For constructing var/const declarations
+    Symbol(std::string name) : name(std::move(name)) {} //For constructing Type symbols
+    
+    Symbol(std::string name, TypeRef type) : name(std::move(name)), type(type) {} //For constructing var/const declarations
 
-    string getName() {
+    virtual ~Symbol() {}
+
+    std::string getName() {
         return this->name;
+    }
+
+    virtual TypeRef getType() {
+        return TypeRef(type);
     }
 
     virtual bool isAssignable() {
@@ -28,9 +41,12 @@ public:
         return false;
     }
 
-    string name;
-    Type *type = nullptr;
+
+protected:
+    TypeRef type = nullptr;
+    std::string name;
 };
 
+}
 
 #endif //CSP2SAT_SYMBOL_H

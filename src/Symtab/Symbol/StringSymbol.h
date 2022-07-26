@@ -8,15 +8,22 @@
 
 #include <string>
 #include "Symbol.h"
-
 #include "../SymbolTable.h"
 
+namespace GOS {
 
-
+class StringSymbol;
+typedef std::shared_ptr<StringSymbol> StringSymbolRef;
 class StringSymbol : public Symbol {
 public:
-    StringSymbol(const string &str) : Symbol(str, SymbolTable::_string) {}
+    static StringSymbolRef Create(const std::string &str) {
+        return StringSymbolRef(new StringSymbol(str));
+    }
+
+protected:
+    StringSymbol(const std::string &str) : Symbol(str, SymbolTable::_string) {}
 };
 
+}
 
 #endif //CSP2SAT_STRINGSYMBOL_H

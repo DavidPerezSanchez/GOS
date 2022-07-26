@@ -5,38 +5,34 @@
 #ifndef CSP2SAT_ARRAYSYMBOL_H
 #define CSP2SAT_ARRAYSYMBOL_H
 
-
-#include "../../../Helpers.h"
+#include "../../../GOSUtils.h"
 #include "../../../Errors/GOSExceptionsRepository.h"
+#include "../../SymbolTable.h"
+#include "ScopedSymbol.h"
+#include <string>
+#include <map>
+#include <vector>
+#include <memory>
 
+namespace GOS {
+
+class ArraySymbol;
+typedef std::shared_ptr<ArraySymbol> ArraySymbolRef;
 class ArraySymbol : public ScopedSymbol {
-
-private:
-    vector<Symbol*> elements;
-    Type * elementsType;
-    int size;
-
 public:
-    ArraySymbol(const string &name, Scope * enclosingScope, Type * arrayElementsType, int size) : ScopedSymbol(SymbolTable::tArray, name, enclosingScope) {
-        this->size = size;
-        this->elementsType = arrayElementsType;
-        this->type = this;
+    static ArraySymbolRef Create(const std::string &name, ScopeRef enclosingScope, TypeRef arrayElementsType, int size) {
+        return ArraySymbolRef(new ArraySymbol(name, enclosingScope, arrayElementsType, size));
+    }
+    static ArraySymbolRef Create(const std::string &name, ScopeRef enclosingScope, TypeRef arrayElementsType) {
+        return ArraySymbolRef(new ArraySymbol(name, enclosingScope, arrayElementsType));
     }
 
-    ArraySymbol(const string &name, Scope * enclosingScope, Type * arrayElementsType) : ScopedSymbol(SymbolTable::tArray, name, enclosingScope) {
-        this->size = 0;
-        this->elementsType = arrayElementsType;
-        this->type = this;
-    }
-
-
-
-    void define(Symbol *sym) override {
+    void define(SymbolRef sym) override {
         elements.push_back(sym);
     }
 
-    Symbol *resolve(const string& name) override {
-        bool isNumber = Helpers::check_number(name);
+    SymbolRef resolve(const std::string& name) override {
+        bool isNumber = Utils::check_number(name);
 
         if(isNumber){
             int index = stoi(name);
@@ -49,8 +45,8 @@ public:
             return enclosingScope->resolve(name);
     }
 
-    bool existsInScope(const string &name) override {
-        bool isNumber = Helpers::check_number(name);
+    bool existsInScope(const std::string &name) override {
+        bool isNumber = Utils::check_number(name);
         if(isNumber){
             int index = stoi(name);
             return index < size;
@@ -58,16 +54,15 @@ public:
         else return false;
     }
 
-
-    map<string, Symbol*> getScopeSymbols() override {
-        map<string, Symbol*> scopeSymbols;
+    std::map<std::string, SymbolRef> getScopeSymbols() override {
+        std::map<std::string, SymbolRef> scopeSymbols;
         for (int i = 0; i < size; i++) {
-            scopeSymbols[to_string(i)] = elements[i];
+            scopeSymbols[std::to_string(i)] = elements[i];
         }
         return scopeSymbols;
     }
 
-    vector<Symbol*> getSymbolVector() {
+    std::vector<SymbolRef> getSymbolVector() {
         return elements;
     }
 
@@ -79,7 +74,7 @@ public:
         return this->size;
     }
 
-    Type * getElementsType () {
+    TypeRef getElementsType () {
         return this->elementsType;
     }
 
@@ -87,16 +82,34 @@ public:
         return false;
     }
 
-
-    void add(Symbol *sym) {
+    void add(SymbolRef sym) {
         elements.push_back(sym);
         size++;
     }
 
+protected:
+    ArraySymbol(const std::string &name, ScopeRef enclosingScope, TypeRef arrayElementsType, int size) :
+        ScopedSymbol(SymbolTable::tArray, name, enclosingScope)
+    {
+        this->size = size;
+        this->elementsType = arrayElementsType;
+        this->type = Type::Create(SymbolTable::tArray, name); // Trick! creating another instance of Type since shared_from_this cannot be called from a constructor
+    }
 
+    ArraySymbol(const std::string &name, ScopeRef enclosingScope, TypeRef arrayElementsType) : 
+        ScopedSymbol(SymbolTable::tArray, name, enclosingScope) 
+    {
+        this->size = 0;
+        this->elementsType = arrayElementsType;
+        this->type = Type::Create(SymbolTable::tArray, name);
+    }
 
-
+private:
+    std::vector<SymbolRef> elements;
+    TypeRef elementsType;
+    int size;
 };
 
+}
 
 #endif //CSP2SAT_ARRAYSYMBOL_H

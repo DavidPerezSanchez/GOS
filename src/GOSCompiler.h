@@ -20,7 +20,6 @@
 #include <controllers/basiccontroller.h>
 #include "Symtab/SymbolTable.h"
 
-
 // custom listener
 #include "Visitors/GOSTypeVarDefinitionVisitor.h"
 #include "Visitors/GOSConstraintsVisitor.h"
@@ -31,87 +30,89 @@
 #include "Visitors/Input/GOSJSONInputVisitor.h"
 #include "Visitors/Output/GOSOutputVisitor.h"
 
-using namespace antlr4;
-using namespace GOS;
-using namespace std;
+// std
+#include <iostream>
+#include <string>
+
+namespace GOS {
 
 class GOSCompiler {
 private:
     bool synError = false;
 public:
-    GOSCompiler(string inStr, string modelStr, SolvingArguments *sargs) : inStr(std::move(inStr)), modelStr(std::move(modelStr)), sargs(sargs) {
+    GOSCompiler(std::string inStr, std::string modelStr, SolvingArguments *sargs) : inStr(std::move(inStr)), modelStr(std::move(modelStr)), sargs(sargs) {
         symbolTable = new SymbolTable();
         _f = new SMTFormula();
     }
 
-    auto runVisitor(BUPBaseVisitor * visitor, string inStr, bool showSintaxErrors = true){
-        ANTLRInputStream input(inStr);
+    auto runVisitor(BUPBaseVisitor& visitor, std::string inStr, bool showSintaxErrors = true){
+        antlr4::ANTLRInputStream input(inStr);
         BUPLexer lexer(&input);
-        CommonTokenStream tokens(&lexer);
+        antlr4::CommonTokenStream tokens(&lexer);
         BUPParser parser(&tokens);
         if(!showSintaxErrors)
             parser.removeErrorListeners();
         BUPParser::Csp2satContext *tree = parser.csp2sat();
         if(parser.getNumberOfSyntaxErrors() > 0)
             synError = true;
-        return visitor->visit(tree);
+        return visitor.visit(tree);
     }
 
-    auto runInputVisitor(JSONBaseVisitor * visitor, string inStr){
-        ANTLRInputStream input2(inStr);
+    ParamJSONRef runInputVisitor(JSONBaseVisitor& visitor, std::string inStr){
+        antlr4::ANTLRInputStream input2(inStr);
         JSONLexer lexer2(&input2);
-        CommonTokenStream tokens2(&lexer2);
+        antlr4::CommonTokenStream tokens2(&lexer2);
         JSONParser parser2(&tokens2);
         JSONParser::JsonContext *tree2 = parser2.json();
-        return visitor->visit(tree2);
+        return visitor.visit(tree2);
     }
 
     void run(){
+        GOSJSONInputVisitor inputPreJsonVisitor;
+        ParamJSONRef readParams = runInputVisitor(inputPreJsonVisitor, inStr);
 
-        GOSJSONInputVisitor * inputPreJsonVisitor = new GOSJSONInputVisitor();
-        ParamJSON * readParams = runInputVisitor(inputPreJsonVisitor, inStr);
-
-        GOSTypeVarDefinitionVisitor * visitor = new GOSTypeVarDefinitionVisitor(symbolTable, _f, readParams);
+        GOSTypeVarDefinitionVisitor visitor(symbolTable, _f, readParams);
         runVisitor(visitor, modelStr);
 
         if(!symbolTable->errors){
-            GOSConstraintsVisitor * constraintsVisitor = new GOSConstraintsVisitor(symbolTable, _f);
+            GOSConstraintsVisitor constraintsVisitor(symbolTable, _f);
             runVisitor(constraintsVisitor, modelStr, false);
 
             if(!synError){
                 if(!symbolTable->errors){
-                    GOSEncoding * encoding = new GOSEncoding(_f, symbolTable);
-                    BasicController c(sargs, encoding,false, 0, 0);
+                    GOSEncoding encoding(_f, symbolTable);
+                    BasicController c(sargs, &encoding, false, 0, 0);
                     c.run();
 
-                    if(encoding->isSat()){
-                        CSP2SATOutputVisitor * outputVisitor = new CSP2SATOutputVisitor(symbolTable, _f);
+                    if(encoding.isSat()){
+                        CSP2SATOutputVisitor outputVisitor(symbolTable, _f);
                         bool customOutput = runVisitor(outputVisitor, modelStr, false);
                         if(!customOutput)
-                            encoding->printModelSolution(cout);
+                            encoding.printModelSolution(std::cout);
                     }
                 }
                 else {
-                    cerr << endl <<  "Execution stopped due to errors in constraint definition" << endl;
+                    std::cerr << std::endl <<  "Execution stopped due to errors in constraint definition" << std::endl;
                 }
             }
             else{
-                cerr << "Execution stopped" << endl;
+                std::cerr << "Execution stopped" << std::endl;
             }
         }
         else {
-            cerr << "Execution stopped due to errors in input" << endl;
+            std::cerr << "Execution stopped due to errors in input" << std::endl;
         }
     }
 
 private:
     SMTFormula *_f;
-    string inStr;
-    string modelStr;
+    std::string inStr;
+    std::string modelStr;
     SymbolTable *symbolTable;
     SolvingArguments *sargs;
 
 };
 
+}
 
 #endif //CSP2SAT_CSP2SATCOMPILER_H

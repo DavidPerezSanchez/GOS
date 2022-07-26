@@ -3,6 +3,7 @@
 #include "GOSCompiler.h"
 
 using namespace std;
+using namespace GOS;
 
 string readFile(string name) {
     ifstream inFile;
@@ -55,6 +56,8 @@ int main(int argc, char **argv) {
 
     GOSCompiler *compiler = new GOSCompiler(inputStr, modelStr, sargs);
     compiler->run();
+
+    delete pargs, sargs, compiler;
 
     return 0;
 }

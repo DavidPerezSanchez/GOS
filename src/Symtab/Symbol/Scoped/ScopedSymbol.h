@@ -7,28 +7,32 @@
 
 
 #include "../../Type.h"
+#include "../../Scope.h"
+#include <string>
+#include <map>
+#include <memory>
 
-
+namespace GOS {
 
 class ScopedSymbol : public Scope, public Type  {
-
 protected:
-    Scope * enclosingScope;
+    ScopeRef enclosingScope;
 
 public:
-
-    ScopedSymbol(int typeIndex, const string &name, Scope *enclosingScope) : Type(typeIndex, name),
+    ScopedSymbol(int typeIndex, const std::string &name, ScopeRef enclosingScope) : Type(typeIndex, name),
                                                                              enclosingScope(enclosingScope) {}
+    
+    virtual ~ScopedSymbol() {}
 
-    string getScopeName() override {
+    std::string getScopeName() override {
         return this->name;
     }
 
-    Scope *getEnclosingScope() override {
+    ScopeRef getEnclosingScope() override {
         return this->enclosingScope;
     }
 
-    string getFullName() override {
+    std::string getFullName() override {
         if(isdigit(this->getScopeName()[0]))
             return  this->enclosingScope->getFullName() + "[" + this->getScopeName() + "]";
         else if(this->enclosingScope->getScopeName() != "global")
@@ -37,17 +41,18 @@ public:
     }
 
 
-    virtual void define(Symbol *sym) override = 0;
+    virtual void define(SymbolRef sym) override = 0;
 
-    virtual Symbol *resolve(const string& name) override = 0;
+    virtual SymbolRef resolve(const std::string& name) override = 0;
 
-    virtual map<string, Symbol*> getScopeSymbols() override = 0;
+    virtual std::map<std::string, SymbolRef> getScopeSymbols() override = 0;
 
     bool isScoped() override {
         return true;
     }
 };
+typedef std::shared_ptr<ScopedSymbol> ScopedSymbolRef;
 
-
+}
 
 #endif //CSP2SAT_SCOPEDSYMBOL_H

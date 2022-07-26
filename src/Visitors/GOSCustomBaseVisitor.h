@@ -6,20 +6,22 @@
 #define CSP2SAT_GOSCUSTOMBASEVISITOR_H
 
 #include <BUPBaseVisitor.h>
-#include "../Symtab/SymbolTable.h"
-#include "../Symtab/Value/Value.h"
-#include "../Symtab/Value/BoolValue.h"
-#include "../Symtab/Value/IntValue.h"
-#include "../Visitors/Utils.h"
+#include "../Visitors/VisitorsUtils.h"
 #include "../Errors/GOSException.h"
 #include "../Errors/GOSExceptionsRepository.h"
-#include "../Symtab/Scope/LocalScope.h"
+#include "../Symtab/Scope.h"
+#include "../Symtab/Symbol/Symbol.h"
 #include "../Symtab/Symbol/StringSymbol.h"
-#include "../Symtab/Symbol/formulaReturn.h"
+#include "../Symtab/SymbolTable.h"
+#include "../Symtab/Value.h"
+#include <string>
+#include <vector>
+#include <map>
+#include <iostream>
+#include <exception>
+#include <utility>
 
-
-using namespace GOS;
-using namespace std;
+namespace GOS {
 
 class GOSCustomBaseVisitor : public BUPBaseVisitor {
 
@@ -27,8 +29,8 @@ protected:
     bool accessingNotLeafVariable = false;
     SymbolTable *st;
     SMTFormula *_f;
-    Scope *currentScope;
-    Scope *currentLocalScope = nullptr;
+    ScopeRef currentScope;
+    ScopeRef currentLocalScope = nullptr;
 
 public:
 
@@ -43,10 +45,10 @@ public:
             return BUPBaseVisitor::visitCsp2sat(ctx);
         }
         catch (GOSException & e) {
-            cerr << e.getErrorMessage() << endl;
+            std::cerr << e.getErrorMessage() << std::endl;
         }
-        catch (exception & e) {
-            cerr << e.what() << endl;
+        catch (std::exception & e) {
+            std::cerr << e.what() << std::endl;
         }
         return nullptr;
     }
@@ -61,7 +63,7 @@ public:
     }
 
     antlrcpp::Any visitExprTernary(BUPParser::ExprTernaryContext *ctx) override {
-        Value *condition = visit(ctx->condition);
+        ValueRef condition = visit(ctx->condition);
         if (condition->getRealValue())
             return visit(ctx->op1);
         else
@@ -69,39 +71,38 @@ public:
     }
 
     antlrcpp::Any visitExprListAggregateOp(BUPParser::ExprListAggregateOpContext *ctx) override {
-        ArraySymbol * list = visit(ctx->list());
-        Value * result = nullptr;
+        ArraySymbolRef list = visit(ctx->list());
+        ValueRef result = nullptr;
 
         if(list->getElementsType()->getTypeIndex() == SymbolTable::tInt){
-
-            vector<Symbol*> elements = list->getSymbolVector();
+            std::vector<SymbolRef> elements = list->getSymbolVector();
 
             if(ctx->opAggregateExpr()->getText() == "sum"){
                 int sum = 0;
                 for(auto & element : elements)
-                    sum += ((AssignableSymbol*)element)->getValue()->getRealValue();
-                result = new IntValue(sum);
+                    sum += Utils::as<AssignableSymbol>(element)->getValue()->getRealValue();
+                result = IntValue::Create(sum);
             }
             else if(ctx->opAggregateExpr()->getText() == "max"){
                 int max = INT_MIN;
                 for(auto & element : elements){
-                    if(((AssignableSymbol*)element)->getValue()->getRealValue() > max){
-                        max = ((AssignableSymbol*)element)->getValue()->getRealValue();
+                    if(Utils::as<AssignableSymbol>(element)->getValue()->getRealValue() > max){
+                        max = Utils::as<AssignableSymbol>(element)->getValue()->getRealValue();
                     }
                 }
-                result = new IntValue(max);
+                result = IntValue::Create(max);
             }
             else if(ctx->opAggregateExpr()->getText() == "min"){
                 int min = INT_MAX;
                 for(auto & element : elements){
-                    if(((AssignableSymbol*)element)->getValue()->getRealValue() < min){
-                        min = ((AssignableSymbol*)element)->getValue()->getRealValue();
+                    if(Utils::as<AssignableSymbol>(element)->getValue()->getRealValue() < min){
+                        min = Utils::as<AssignableSymbol>(element)->getValue()->getRealValue();
                     }
                 }
-                result = new IntValue(min);
+                result = IntValue::Create(min);
             }
             else { //Length
-                result = new IntValue(elements.size());
+                result = IntValue::Create(elements.size());
             }
         }
         else{
@@ -109,8 +110,8 @@ public:
                         ctx->start->getStartIndex(),
                         ctx->start->getCharPositionInLine(),
                         ctx->getText(),
-                        "list<" + Utils::getTypeName(list->getElementsType()->getTypeIndex()) + ">",
-                        Utils::getTypeName(SymbolTable::tInt)
+                        "list<" + VisitorsUtils::getTypeName(list->getElementsType()->getTypeIndex()) + ">",
+                        VisitorsUtils::getTypeName(SymbolTable::tInt)
                     );
         }
 
@@ -118,24 +119,24 @@ public:
     }
 
     antlrcpp::Any visitExprAnd(BUPParser::ExprAndContext *ctx) override {
-        Value *result = visit(ctx->exprOr(0));
+        ValueRef result = visit(ctx->exprOr(0));
         if (ctx->exprOr().size() > 1) {
-            BoolValue *res = new BoolValue(true);
+            ValueRef res = BoolValue::Create(true);
             for (int i = 0; i < ctx->exprOr().size(); i++) {
-                Value *currValue = visit(ctx->exprOr(i));
+                ValueRef currValue = visit(ctx->exprOr(i));
                 res->setRealValue(res->getRealValue() && currValue->getRealValue());
             }
-            return (Value *) res;
+            return res;
         }
         return result;
     }
 
     antlrcpp::Any visitExprOr(BUPParser::ExprOrContext *ctx) override {
-        Value *result = visit(ctx->exprEq(0));
+        ValueRef result = visit(ctx->exprEq(0));
         if (ctx->exprEq().size() > 1) {
-            BoolValue *res = new BoolValue(false);
+            ValueRef res = BoolValue::Create(false);
             for (int i = 0; i < ctx->exprEq().size(); i++) {
-                Value *currValue = visit(ctx->exprEq(i));
+                ValueRef currValue = visit(ctx->exprEq(i));
                 if (currValue->isBoolean())
                     res->setRealValue(res->getRealValue() || currValue->getRealValue());
                 else {
@@ -143,23 +144,23 @@ public:
                             ctx->exprEq(i)->getStart()->getLine(),
                             ctx->exprEq(i)->getStart()->getCharPositionInLine(),
                             ctx->getText(),
-                            Utils::getTypeName(SymbolTable::tInt),
-                            Utils::getTypeName(SymbolTable::tBool)
+                            VisitorsUtils::getTypeName(SymbolTable::tInt),
+                            VisitorsUtils::getTypeName(SymbolTable::tBool)
                     );
                 }
             }
-            return (Value *) res;
+            return res;
         }
         return result;
     }
 
     antlrcpp::Any visitExprEq(BUPParser::ExprEqContext *ctx) override {
-        Value *lVal = visit(ctx->exprRel(0));
+        ValueRef lVal = visit(ctx->exprRel(0));
         if (ctx->exprRel().size() > 1) {
             for (int i = 1; i < ctx->exprRel().size(); i++) {
-                Value *rVal = visit(ctx->exprRel(i));
+                ValueRef rVal = visit(ctx->exprRel(i));
                 if (lVal->isBoolean() == rVal->isBoolean()) {
-                    BoolValue *res = new BoolValue();
+                    ValueRef res = BoolValue::Create();
                     if (ctx->opEquality(0)->getText() == "==")
                         res->setRealValue(lVal->getRealValue() == rVal->getRealValue());
                     else
@@ -180,17 +181,17 @@ public:
     }
 
     antlrcpp::Any visitExprRel(BUPParser::ExprRelContext *ctx) override {
-        Value *lVal = visit(ctx->exprSumDiff(0));
+        ValueRef lVal = visit(ctx->exprSumDiff(0));
         if (ctx->exprSumDiff().size() == 2) {
-            Value *rVal = visit(ctx->exprSumDiff(1));
+            ValueRef rVal = visit(ctx->exprSumDiff(1));
 
             if (lVal->isBoolean()) {
                 throw CSP2SATInvalidExpressionTypeException(
                         ctx->exprSumDiff(0)->start->getLine(),
                         ctx->exprSumDiff(0)->start->getCharPositionInLine(),
                         ctx->exprSumDiff(0)->getText(),
-                        Utils::getTypeName(SymbolTable::tBool),
-                        Utils::getTypeName(SymbolTable::tInt)
+                        VisitorsUtils::getTypeName(SymbolTable::tBool),
+                        VisitorsUtils::getTypeName(SymbolTable::tInt)
                 );
             }
             if (rVal->isBoolean()) {
@@ -198,12 +199,12 @@ public:
                         ctx->exprSumDiff(1)->start->getLine(),
                         ctx->exprSumDiff(1)->start->getCharPositionInLine(),
                         ctx->exprSumDiff(1)->getText(),
-                        Utils::getTypeName(SymbolTable::tBool),
-                        Utils::getTypeName(SymbolTable::tInt)
+                        VisitorsUtils::getTypeName(SymbolTable::tBool),
+                        VisitorsUtils::getTypeName(SymbolTable::tInt)
                 );
             };
 
-            BoolValue *res = new BoolValue();
+            ValueRef res = BoolValue::Create();
             if (ctx->opRelational(0)->getText() == "<")
                 res->setRealValue(lVal->getRealValue() < rVal->getRealValue());
             else if (ctx->opRelational(0)->getText() == ">")
@@ -212,7 +213,7 @@ public:
                 res->setRealValue(lVal->getRealValue() <= rVal->getRealValue());
             else
                 res->setRealValue(lVal->getRealValue() >= rVal->getRealValue());
-            return (Value *) res;
+            return res;
 
         } else if (ctx->exprSumDiff().size() > 2) {
             throw CSP2SATInvalidOperationException(
@@ -225,11 +226,11 @@ public:
     }
 
     antlrcpp::Any visitExprSumDiff(BUPParser::ExprSumDiffContext *ctx) override {
-        Value *result = visit(ctx->exprMulDivMod(0));
+        ValueRef result = visit(ctx->exprMulDivMod(0));
         if (ctx->exprMulDivMod().size() > 1) {
-            IntValue *res = new IntValue(result->getRealValue());
+            ValueRef res = IntValue::Create(result->getRealValue());
             for (int i = 0; i < ctx->opSumDiff().size(); i++) {
-                Value *currValue = visit(ctx->exprMulDivMod(i + 1));
+                ValueRef currValue = visit(ctx->exprMulDivMod(i + 1));
                 if (!currValue->isBoolean()) {
                     if (ctx->opSumDiff(i)->getText() == "+")
                         res->setRealValue(res->getRealValue() + currValue->getRealValue());
@@ -240,23 +241,23 @@ public:
                             ctx->exprMulDivMod(1)->start->getLine(),
                             ctx->exprMulDivMod(1)->start->getCharPositionInLine(),
                             ctx->exprMulDivMod(1)->getText(),
-                            Utils::getTypeName(SymbolTable::tBool),
-                            Utils::getTypeName(SymbolTable::tInt)
+                            VisitorsUtils::getTypeName(SymbolTable::tBool),
+                            VisitorsUtils::getTypeName(SymbolTable::tInt)
                     );
                 }
 
             }
-            return (Value *) res;
+            return res;
         }
         return result;
     }
 
     antlrcpp::Any visitExprMulDivMod(BUPParser::ExprMulDivModContext *ctx) override {
-        Value *result = visit(ctx->exprNot(0));
+        ValueRef result = visit(ctx->exprNot(0));
         if (ctx->exprNot().size() > 1) {
-            IntValue *res = new IntValue(result->getRealValue());
+            ValueRef res = IntValue::Create(result->getRealValue());
             for (int i = 0; i < ctx->opMulDivMod().size(); i++) {
-                Value *currValue = visit(ctx->exprNot(i + 1));
+                ValueRef currValue = visit(ctx->exprNot(i + 1));
                 if (!currValue->isBoolean()) {
                     if (ctx->opMulDivMod(i)->getText() == "*")
                         res->setRealValue(res->getRealValue() * currValue->getRealValue());
@@ -268,23 +269,23 @@ public:
 
                 }
             }
-            return (Value *) res;
+            return res;
         }
         return result;
     }
 
     antlrcpp::Any visitExprNot(BUPParser::ExprNotContext *ctx) override {
-        Value *result = visit(ctx->expr_base());
+        ValueRef result = visit(ctx->expr_base()); // TODO safe cast?
         if (ctx->op) {
             if (result->isBoolean()) {
-                return (Value *) new BoolValue(!result->getRealValue());
+                result = BoolValue::Create(!result->getRealValue());
             } else {
                 throw CSP2SATInvalidExpressionTypeException(
                         ctx->start->getLine(),
                         ctx->start->getCharPositionInLine(),
                         ctx->getText(),
-                        Utils::getTypeName(SymbolTable::tInt),
-                        Utils::getTypeName(SymbolTable::tBool)
+                        VisitorsUtils::getTypeName(SymbolTable::tInt),
+                        VisitorsUtils::getTypeName(SymbolTable::tBool)
                 );
             }
         }
@@ -295,16 +296,16 @@ public:
         if (ctx->expr()) {
             return visit(ctx->expr());
         } else if (ctx->varAccess()) {
-            Symbol *value = visit(ctx->varAccess());
+            SymbolRef value = visit(ctx->varAccess());
             if (value->isAssignable()) {
-                return (Value *) ((AssignableSymbol *) value)->getValue();
+                return Utils::as<AssignableSymbol>(value)->getValue();
             } else {
                 throw CSP2SATInvalidExpressionTypeException(
                         ctx->getStart()->getLine(),
                         ctx->getStart()->getCharPositionInLine(),
                         ctx->getText(),
-                        Utils::getTypeName(value->type->getTypeIndex()),
-                        Utils::getTypeName(SymbolTable::tInt)
+                        VisitorsUtils::getTypeName(value->getType()->getTypeIndex()),
+                        VisitorsUtils::getTypeName(SymbolTable::tInt)
                 );
             }
         }
@@ -314,23 +315,22 @@ public:
 
     antlrcpp::Any visitVarAccessObjectOrArray(BUPParser::VarAccessObjectOrArrayContext *ctx) override {
         if (ctx->attr) {
-            return (Symbol *) this->currentScope->resolve(ctx->attr->getText());
+            return this->currentScope->resolve(ctx->attr->getText());
         } else if (ctx->index) {
-            Scope *prev = this->currentScope;
+            ScopeRef prev = this->currentScope;
             this->currentScope = this->currentLocalScope;
-            Value *index = visit(ctx->index);
+            ValueRef index = visit(ctx->index);
             this->currentScope = prev;
-            Symbol *res = this->currentScope->resolve(to_string(index->getRealValue()));
-            return (Symbol *) this->currentScope->resolve(to_string(index->getRealValue()));
+            return this->currentScope->resolve(std::to_string(index->getRealValue()));
         }
         return nullptr;
     }
 
 
     antlrcpp::Any visitVarAccess(BUPParser::VarAccessContext *ctx) override {
-        string a = ctx->TK_IDENT()->getText();
-        string b = ctx->getText();
-        Symbol *var = this->currentScope->resolve(ctx->TK_IDENT()->getText());
+        std::string a = ctx->TK_IDENT()->getText();
+        std::string b = ctx->getText();
+        SymbolRef var = this->currentScope->resolve(ctx->TK_IDENT()->getText());
 
         if (var == nullptr) {
             throw CSP2SATNotExistsException(
@@ -343,14 +343,14 @@ public:
         if (!ctx->varAccessObjectOrArray().empty()) {
             for (int i = 0; i < ctx->varAccessObjectOrArray().size(); i++) {
                 auto nestedScope = ctx->varAccessObjectOrArray(i);
-                string nest = nestedScope->getText();
+                std::string nest = nestedScope->getText();
                 if (var != nullptr && var->isScoped()) {
                     this->currentLocalScope = this->currentScope;
                     if (!nestedScope->underscore) {
-                        this->currentScope = (ScopedSymbol *) var;
+                        this->currentScope = Utils::as<ScopedSymbol>(var);
                         var = visit(nestedScope);
                     } else {
-                        ScopedSymbol *result = (ScopedSymbol *) var;
+                        ScopedSymbolRef result = Utils::as<ScopedSymbol>(var);
                         for (int j = i + 1; j < ctx->varAccessObjectOrArray().size(); j++) {
                             if (ctx->varAccessObjectOrArray(j)->underscore) {
                                 throw CSP2SATInvalidExpressionTypeException(
@@ -361,15 +361,15 @@ public:
                                         "list"
                                 );
                             }
-                            ArraySymbol *aux = new ArraySymbol(
+                            ArraySymbolRef aux = ArraySymbol::Create(
                                     "aux",
                                     result,
-                                    ((ArraySymbol *) result)->getElementsType()
+                                    Utils::as<ArraySymbol>(result)->getElementsType()
                             );
-                            for (auto currDimElem : ((ScopedSymbol *) result)->getScopeSymbols()) {
-                                if (currDimElem.second->type->getTypeIndex() == SymbolTable::tArray) {
-                                    this->currentScope = (ScopedSymbol *) currDimElem.second;
-                                    Symbol *currDimSymElem = visit(ctx->varAccessObjectOrArray(j));
+                            for (auto currDimElem : Utils::as<ScopedSymbol>(result)->getScopeSymbols()) {
+                                if (currDimElem.second->getType()->getTypeIndex() == SymbolTable::tArray) {
+                                    this->currentScope = Utils::as<ScopedSymbol>(currDimElem.second);
+                                    SymbolRef currDimSymElem = visit(ctx->varAccessObjectOrArray(j));
                                     aux->add(currDimSymElem);
                                 } else {
                                     throw CSP2SATBadAccessException(
@@ -396,8 +396,6 @@ public:
             }
         }
 
-
-
         if (var == nullptr || (!this->accessingNotLeafVariable && var->isScoped())) {
             throw CSP2SATBadAccessException(
                     ctx->start->getLine(),
@@ -410,30 +408,31 @@ public:
 
 
     antlrcpp::Any visitValueBaseType(BUPParser::ValueBaseTypeContext *ctx) override {
+        ValueRef result;
         if (ctx->integer) {
-            return (Value *) new IntValue(stoi(ctx->integer->getText()));
+            result = IntValue::Create(stoi(ctx->integer->getText()));
         } else {
-            return (Value *) new BoolValue(ctx->boolean->getText() == "true");
+            result = BoolValue::Create(ctx->boolean->getText() == "true");
         }
+        return result;
     }
 
     antlrcpp::Any visitRangList(BUPParser::RangListContext *ctx) override {
-
-        Value *minRange = visit(ctx->min);
-        Value *maxRange = visit(ctx->max);
+        ValueRef minRange = visit(ctx->min);
+        ValueRef maxRange = visit(ctx->max);
 
         int minValue = minRange->getRealValue();
         int maxValue = maxRange->getRealValue();
 
         if (minValue <= maxValue) {
-            ArraySymbol *result = new ArraySymbol(
+            ArraySymbolRef result = ArraySymbol::Create(
                     "auxRangList",
                     this->currentScope,
                     SymbolTable::_integer
             );
             for (int i = 0; i <= (maxValue - minValue); i++) {
-                AssignableSymbol *newValue = new AssignableSymbol(to_string(i), SymbolTable::_integer);
-                newValue->setValue(new IntValue(minValue + i));
+                AssignableSymbolRef newValue = AssignableSymbol::Create(std::to_string(i), SymbolTable::_integer);
+                newValue->setValue(IntValue::Create(minValue + i));
                 result->add(newValue);
             }
             return result;
@@ -447,16 +446,16 @@ public:
     }
 
     antlrcpp::Any visitAuxiliarListAssignation(BUPParser::AuxiliarListAssignationContext *ctx) override {
-        ArraySymbol *arrayDefined = visit(ctx->list());
-        return pair<string, ArraySymbol *>(ctx->TK_IDENT()->getText(), arrayDefined);
+        ArraySymbolRef arrayDefined = visit(ctx->list());
+        return std::pair<std::string, ArraySymbolRef>(ctx->TK_IDENT()->getText(), arrayDefined);
     }
 
 
 
     antlrcpp::Any visitComprehensionList(BUPParser::ComprehensionListContext *ctx) override {
-        auto *listLocalScope = new LocalScope(this->currentScope);
-        vector<map<string, Symbol *>> possibleAssignations = getAllCombinations(ctx->auxiliarListAssignation());
-        ArraySymbol *newList = nullptr;
+        LocalScopeRef listLocalScope = LocalScope::Create(this->currentScope);
+        std::vector<std::map<std::string, SymbolRef>> possibleAssignations = getAllCombinations(ctx->auxiliarListAssignation());
+        ArraySymbolRef newList = nullptr;
 
         this->currentScope = listLocalScope;
         for (const auto &assignation: possibleAssignations) {
@@ -465,20 +464,20 @@ public:
 
             bool condition = true;
             if (ctx->condExpr) {
-                Value *cond = visit(ctx->condExpr);
+                ValueRef cond = visit(ctx->condExpr);
                 if (!cond->isBoolean()) {
                     throw CSP2SATInvalidExpressionTypeException(
                             ctx->condExpr->start->getLine(),
                             ctx->condExpr->start->getCharPositionInLine(),
                             ctx->condExpr->getText(),
-                            Utils::getTypeName(SymbolTable::tInt),
-                            Utils::getTypeName(SymbolTable::tBool)
+                            VisitorsUtils::getTypeName(SymbolTable::tInt),
+                            VisitorsUtils::getTypeName(SymbolTable::tBool)
                     );
                 }
                 condition = cond->getRealValue() == 1;
             }
 
-            Symbol *exprRes;
+            SymbolRef exprRes;
 
             if (ctx->listResultExpr()->varAcc) {
                 this->accessingNotLeafVariable = true;
@@ -486,28 +485,28 @@ public:
                 this->accessingNotLeafVariable = false;
             }
             else if (ctx->listResultExpr()->resExpr) {
-                Value *val = visit(ctx->listResultExpr()->resExpr);
-                auto *valueResult = new AssignableSymbol(
-                        to_string(rand()),
+                ValueRef val = visit(ctx->listResultExpr()->resExpr);
+                AssignableSymbolRef valueResult = AssignableSymbol::Create(
+                        std::to_string(rand()),
                         val->isBoolean() ? SymbolTable::_boolean : SymbolTable::_integer
                 );
                 valueResult->setValue(val);
                 exprRes = valueResult;
             }
             else if (ctx->listResultExpr()->string()){
-                string currStr = visit(ctx->listResultExpr()->string());
-                exprRes = new StringSymbol(currStr);
+                std::string currStr = visit(ctx->listResultExpr()->string());
+                exprRes = StringSymbol::Create(currStr);
             }
             else {
-                formulaReturn * formula = visit(ctx->listResultExpr()->constraint_expression());
-                exprRes = (Symbol*) formula;
+                formulaReturnRef formula = visit(ctx->listResultExpr()->constraint_expression());
+                exprRes = formula;
             }
 
             if (newList == nullptr)
-                newList = new ArraySymbol(
+                newList = ArraySymbol::Create(
                         "comprehensionListAux",
                         listLocalScope,
-                        exprRes->type
+                        exprRes->getType()
                 );
 
             if(condition)
@@ -518,61 +517,61 @@ public:
     }
 
     antlrcpp::Any visitVarAccessList(BUPParser::VarAccessListContext *ctx) override {
-        Symbol *array = nullptr;
+        SymbolRef array = nullptr;
         this->accessingNotLeafVariable = true;
         array = visit(ctx->varAccess());
         this->accessingNotLeafVariable = false;
 
-        if (array && array->type && array->type->getTypeIndex() == SymbolTable::tArray) {
-            return (ArraySymbol *) array;
+        if (array && array->getType() && array->getType()->getTypeIndex() == SymbolTable::tArray) {
+            return Utils::as<ArraySymbol>(array);
         } else {
             throw CSP2SATInvalidExpressionTypeException(
                     ctx->start->getLine(),
                     ctx->start->getCharPositionInLine(),
                     ctx->getText(),
-                    Utils::getTypeName(array->type->getTypeIndex()),
+                    VisitorsUtils::getTypeName(array->getType()->getTypeIndex()),
                     "array"
             );
         }
     }
 
     antlrcpp::Any visitExplicitList(BUPParser::ExplicitListContext *ctx) override {
-        ArraySymbol *resultList = nullptr;
+        ArraySymbolRef resultList = nullptr;
 
         for (auto currVal : ctx->listResultExpr()) {
-            Symbol *curr = nullptr;
+            SymbolRef curr = nullptr;
             if (currVal->varAcc) {
                 curr = visit(currVal);
             } else if (currVal->resExpr) {
-                Value *exprVal = visit(currVal->resExpr);
-                curr = new AssignableSymbol(to_string(rand()),
+                ValueRef exprVal = visit(currVal->resExpr);
+                curr = AssignableSymbol::Create(std::to_string(rand()),
                                             exprVal->isBoolean() ? SymbolTable::_boolean : SymbolTable::_integer);
-                ((AssignableSymbol *) curr)->setValue(exprVal);
+                Utils::as<AssignableSymbol>(curr)->setValue(exprVal);
             } else if (currVal->string()) {
-                string currStr = visit(currVal->string());
-                curr = new StringSymbol(currStr);
+                std::string currStr = visit(currVal->string());
+                curr = StringSymbol::Create(currStr);
             } else {
-                formulaReturn * a =  visit(currVal->constraint_expression());
-                curr = (Symbol*) a;
+                formulaReturnRef a =  visit(currVal->constraint_expression());
+                curr = a;
             }
 
             if (resultList == nullptr) {
-                resultList = new ArraySymbol(
-                        to_string(rand()),
+                resultList = ArraySymbol::Create(
+                        std::to_string(rand()),
                         this->currentScope,
-                        curr->type
+                        curr->getType()
                 );
             }
 
-            if (curr->type->getTypeIndex() == resultList->getElementsType()->getTypeIndex()) {
+            if (curr->getType()->getTypeIndex() == resultList->getElementsType()->getTypeIndex()) {
                 resultList->add(curr);
             } else {
                 throw CSP2SATInvalidExpressionTypeException(
                         currVal->start->getLine(),
                         currVal->start->getCharPositionInLine(),
                         currVal->getText(),
-                        Utils::getTypeName(curr->type->getTypeIndex()),
-                        Utils::getTypeName(resultList->getElementsType()->getTypeIndex())
+                        VisitorsUtils::getTypeName(curr->getType()->getTypeIndex()),
+                        VisitorsUtils::getTypeName(resultList->getElementsType()->getTypeIndex())
                 );
             }
         }
@@ -580,27 +579,36 @@ public:
     }
 
 protected:
-    vector<map<string, Symbol *>> getAllCombinations(vector<GOS::BUPParser::AuxiliarListAssignationContext *> aux){
-        vector<map<string, Symbol *>> combinations = vector<map<string, Symbol *>>();
-        LocalScope * combScope = new LocalScope(this->currentScope);
+    std::vector<std::map<std::string, SymbolRef>> 
+    getAllCombinations(std::vector<GOS::BUPParser::AuxiliarListAssignationContext *> aux)
+    {
+        std::vector<std::map<std::string, SymbolRef>> combinations = std::vector<std::map<std::string, SymbolRef>>();
+        LocalScopeRef combScope = LocalScope::Create(this->currentScope);
         getAllCombinations(0, aux, combinations, combScope);
         return combinations;
     }
 
-    void getAllCombinations(int idx, vector<GOS::BUPParser::AuxiliarListAssignationContext *> aux, vector<map<string, Symbol *>> & combinations, LocalScope * combinationsScope) {
+    void 
+    getAllCombinations(
+        int idx, 
+        std::vector<GOS::BUPParser::AuxiliarListAssignationContext *> aux, 
+        std::vector<std::map<std::string, SymbolRef>> & combinations, 
+        LocalScopeRef combinationsScope)
+    {
         if (idx == aux.size()) {
             combinations.push_back(combinationsScope->getScopeSymbols());
             return;
         }
         this->currentScope = combinationsScope;
-        pair<string, ArraySymbol *> currArr = visit(aux[idx]);
+        std::pair<std::string, ArraySymbolRef> currArr = visit(aux[idx]);
         for (int i = 0; i < currArr.second->getSize(); i++) {
-            combinationsScope->define(currArr.first, currArr.second->resolve(to_string(i)));
+            combinationsScope->define(currArr.first, currArr.second->resolve(std::to_string(i)));
             getAllCombinations(idx + 1, aux, combinations, combinationsScope);
         }
         this->currentScope = combinationsScope->getEnclosingScope();
     }
 };
 
+}
 
 #endif //CSP2SAT_GOSCUSTOMBASEVISITOR_H

@@ -3,7 +3,7 @@
 #include "MDD/amopbbddbuilder.h"
 #include "MDD/mdd.h"
 #include "./util/util.h"
-#include <limits.h>
+#include <limits>
 #include <algorithm>
 #include <math.h>
 

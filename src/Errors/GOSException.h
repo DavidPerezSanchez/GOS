@@ -8,24 +8,25 @@
 #include <exception>
 #include <string>
 
-using namespace std;
+namespace GOS {
 
-class GOSException : public exception {
+class GOSException : public std::exception {
 private:
     int line;
     int column;
-    string message;
+    std::string message;
 
 public:
-    GOSException(int line, int pos, const string &message) : line(line), column(pos), message(message) {
+    GOSException(int line, int pos, const std::string &message) : line(line), column(pos), message(message) {
         SymbolTable::errors = true;
     }
 
-    string getErrorMessage(){
-        string error =  string("ERROR on line ") + to_string(line) + ":" + to_string(column) + "\n\t" + message;
+    std::string getErrorMessage(){
+        std::string error =  std::string("ERROR on line ") + std::to_string(line) + ":" + std::to_string(column) + "\n\t" + message;
         return error;
     }
 };
 
+}
 
 #endif //CSP2SAT_GOSEXCEPTION_H

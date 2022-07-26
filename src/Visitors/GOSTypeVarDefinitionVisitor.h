@@ -5,19 +5,19 @@
 #ifndef CSP2SAT_GOSTYPEVARDEFINITIONVISITOR_H
 #define CSP2SAT_GOSTYPEVARDEFINITIONVISITOR_H
 
-
 #include "GOSCustomBaseVisitor.h"
 #include "Input/Param.h"
+#include <string>
+#include <vector>
 
-using namespace GOS;
-using namespace std;
+namespace GOS {
 
 class GOSTypeVarDefinitionVisitor : public GOSCustomBaseVisitor {
 private:
-    ParamJSON *params;
+    ParamJSONRef params;
 
 public:
-    explicit GOSTypeVarDefinitionVisitor(SymbolTable *symbolTable, SMTFormula *f, ParamJSON *params)
+    explicit GOSTypeVarDefinitionVisitor(SymbolTable *symbolTable, SMTFormula *f, ParamJSONRef params)
             : GOSCustomBaseVisitor(symbolTable, f) {
         this->params = params;
     }
@@ -47,17 +47,16 @@ public:
             return BUPBaseVisitor::visitDefinition(ctx);
         }
         catch (GOSException &e) {
-            cerr << e.getErrorMessage() << endl;
+            std::cerr << e.getErrorMessage() << std::endl;
             return nullptr;
         }
     }
 
 
     antlrcpp::Any visitVarDefinition(BUPParser::VarDefinitionContext *ctx) override {
-
         BUPBaseVisitor::visitVarDefinition(ctx);
-        Symbol *newVar;
-        string name = ctx->name->getText();
+        SymbolRef newVar;
+        std::string name = ctx->name->getText();
 
         if(this->currentScope->existsInScope(name)) {
             throw CSP2SATAlreadyExistException(
@@ -68,15 +67,15 @@ public:
         }
 
         if (ctx->arrayDefinition() && !ctx->arrayDefinition()->expr().empty()) {
-            vector<int> dimentions;
+            std::vector<int> dimentions;
             for (auto expr : ctx->arrayDefinition()->expr()) {
-                Value *a = visit(expr);
+                ValueRef a = visit(expr);
                 dimentions.push_back(a->getRealValue());
             }
-            newVar = Utils::defineNewArray(ctx->name->getText(), currentScope, dimentions, SymbolTable::_varbool,
+            newVar = VisitorsUtils::defineNewArray(ctx->name->getText(), currentScope, dimentions, SymbolTable::_varbool,
                                            this->_f, this->params);
         } else {
-            newVar = new VariableSymbol(ctx->name->getText(), this->_f);
+            newVar = VariableSymbol::Create(ctx->name->getText(), this->_f);
         }
         currentScope->define(newVar);
 
@@ -87,10 +86,10 @@ public:
     antlrcpp::Any visitParamDefinition(BUPParser::ParamDefinitionContext *ctx) override {
         BUPBaseVisitor::visitParamDefinition(ctx);
 
-        Type *type = (Type *) currentScope->resolve(ctx->type->getText());
-        Symbol *newConst;
+        TypeRef type = Utils::as<Type>(currentScope->resolve(ctx->type->getText()));
+        SymbolRef newConst;
 
-        string name = ctx->name->getText();
+        std::string name = ctx->name->getText();
 
         if(this->currentScope->existsInScope(name)) {
             throw CSP2SATAlreadyExistException(
@@ -102,29 +101,29 @@ public:
 
 
         if (ctx->arrayDefinition() && !ctx->arrayDefinition()->expr().empty()) {
-            vector<int> dimentions;
+            std::vector<int> dimentions;
             for (auto expr : ctx->arrayDefinition()->expr()) {
-                Value *a = visit(expr);
+                ValueRef a = visit(expr);
                 dimentions.push_back(a->getRealValue());
             }
 
-            newConst = Utils::defineNewArray(ctx->name->getText(), currentScope, dimentions, type, this->_f,
+            newConst = VisitorsUtils::defineNewArray(ctx->name->getText(), currentScope, dimentions, type, this->_f,
                                              this->params);
         } else if (type->getTypeIndex() == SymbolTable::tCustom) {
-            newConst = Utils::definewNewCustomTypeParam(ctx->name->getText(), (StructSymbol *) type, currentScope,
+            newConst = VisitorsUtils::definewNewCustomTypeParam(ctx->name->getText(), Utils::as<StructSymbol>(type), currentScope,
                                                         this->_f, this->params);
         } else {
-            AssignableSymbol *element = new AssignableSymbol(
+            AssignableSymbolRef element = AssignableSymbol::Create(
                     ctx->name->getText(),
                     type
             );
             if (!SymbolTable::entityDefinitionBlock) {
-                string paramFullName = this->currentScope->getFullName() + ctx->name->getText();
+                std::string paramFullName = this->currentScope->getFullName() + ctx->name->getText();
                 int value = this->params->resolve(paramFullName);
                 if (type->getTypeIndex() == SymbolTable::tInt)
-                    element->setValue(new IntValue(value));
+                    element->setValue(IntValue::Create(value));
                 else
-                    element->setValue(new BoolValue(value));
+                    element->setValue(BoolValue::Create(value));
             }
             newConst = element;
         }
@@ -133,8 +132,8 @@ public:
     }
 
     antlrcpp::Any visitEntityDefinition(BUPParser::EntityDefinitionContext *ctx) override {
-        StructSymbol *newType;
-        newType = new StructSymbol(ctx->name->getText(), currentScope);
+        StructSymbolRef newType;
+        newType = StructSymbol::Create(ctx->name->getText(), currentScope);
         currentScope->define(newType);
 
         currentScope = newType;
@@ -146,9 +145,9 @@ public:
     antlrcpp::Any visitVarAccess(BUPParser::VarAccessContext *ctx) override {
         try {
             int value = this->params->resolve(ctx->getText());
-            AssignableSymbol *access = new AssignableSymbol(ctx->getText(), SymbolTable::_integer);
-            access->setValue(new IntValue(value));
-            return (Symbol *) access;
+            AssignableSymbolRef access = AssignableSymbol::Create(ctx->getText(), SymbolTable::_integer);
+            access->setValue(IntValue::Create(value));
+            return Utils::as<Symbol>(access);
         }
         catch (GOSException &e) {
             throw CSP2SATNotExistsException(
@@ -172,5 +171,6 @@ public:
     }
 };
 
+}
 
 #endif //CSP2SAT_GOSTYPEVARDEFINITIONVISITOR_H
