@@ -60,12 +60,48 @@ public:
         return nullptr;
     }
 
+    antlrcpp::Any visitWeight(BUPParser::WeightContext *ctx) override {
+        ValueRef weight = visit(ctx->expr());
+
+        if(weight->isBoolean()) {
+            throw CSP2SATInvalidExpressionTypeException(
+                    {
+                            st->parsedFiles.front()->getPath(),
+                            ctx->start->getLine(),
+                            ctx->start->getCharPositionInLine()
+                    },
+                    ctx->expr()->getText(),
+                    VisitorsUtils::getTypeName(SymbolTable::tBool),
+                    VisitorsUtils::getTypeName(SymbolTable::tInt)
+            );
+        }
+
+        return Utils::as<IntValue>(weight);
+    }
 
     antlrcpp::Any visitConstraint(BUPParser::ConstraintContext *ctx) override {
         if (ctx->constraint_expression()) {
             formulaReturnRef result = visit(ctx->constraint_expression());
-            for (clause clause : result->clauses)
-                this->_f->addClause(clause);
+            if(ctx->weight()) {
+                if(result->clauses.size() != 1) { // Soft constraints can only have one clause since reification is not supported
+                    throw CSP2SATInvalidFormulaException(
+                        {
+                            st->parsedFiles.front()->getPath(),
+                            ctx->start->getLine(),
+                            ctx->start->getCharPositionInLine()
+                        },
+                        ctx->getText(),
+                        "Soft constraints can only have one clause"
+                    );
+                }
+                IntValueRef weight = visit(ctx->weight());
+                std::cout << weight->getRealValue() << std::endl;
+                this->_f->addSoftClause(result->clauses.front(), weight->getRealValue());
+            }
+            else {
+                for (clause clause : result->clauses)
+                    this->_f->addClause(clause);
+            }
         } else visit(ctx->constraint_aggreggate_op());
         return nullptr;
     }

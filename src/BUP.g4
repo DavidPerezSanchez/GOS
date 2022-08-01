@@ -213,10 +213,12 @@ listResultExpr:
     | constraint_expression
     | string;
 
-constraint: constraint_expression | constraint_aggreggate_op;
-
 weight: TK_WEIGHT expr;
-constraint_expression: constraint_double_implication weight?;
+constraint:
+    constraint_expression weight?
+    | constraint_aggreggate_op;
+
+constraint_expression: constraint_double_implication;
 
 constraint_double_implication: constraint_implication (TK_OP_DOUBLE_IMPLIC constraint_implication)*;
 
