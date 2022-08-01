@@ -98,6 +98,8 @@ TK_CONSTRAINT_AGG_ALO : 'ALO';
 TK_CONSTRAINT_AGG_AMK : 'AMK';
 TK_CONSTRAINT_AGG_AMO : 'AMO';
 
+TK_WEIGHT : '@';
+
 TK_IDENT: ( ('a'..'z' | 'A'..'Z' | '_')('a'..'z' | 'A'..'Z' | '_' | '0'..'9')* );
 
 
@@ -116,13 +118,10 @@ entityDefinition: name=TK_IDENT TK_LBRACKET (definition TK_SEMICOLON)* TK_RBRACK
 
 viewpointBlock: TK_VIEWPOINT TK_COLON (definition TK_SEMICOLON)*;
 
-// TODO Parlar sobre com implementar els predicats per poder fer <constraint: XOR(a,b) -> XOR(c,b);>
-// Mirar si podem resoldre les funcions en temps de compilacio, llavors no podrien rebre variables de decisió
-// En canvi els predicats sí (pensar com)
 predDefBlock: TK_PREDICATES TK_COLON predDefBlockBody;
 predDefBlockBody: (predDef | predInclude)*;
 predDef: name=TK_IDENT TK_LPAREN predDefParams? TK_RPAREN TK_LBRACKET predDefBody TK_RBRACKET;
-predDefParams: definition (TK_COMMA definition)*; // TODO permetre passar estructures (llistes) Cal pensar si passar entities
+predDefParams: definition (TK_COMMA definition)*;
 predDefBody: predVarDefinitionBlock constraintDefinition+;
 predCall: name=TK_IDENT TK_LPAREN predCallParams? TK_RPAREN;
 predCallParams: predCallParam (TK_COMMA predCallParam)*;
@@ -216,7 +215,8 @@ listResultExpr:
 
 constraint: constraint_expression | constraint_aggreggate_op;
 
-constraint_expression: constraint_double_implication;
+weight: TK_WEIGHT expr;
+constraint_expression: constraint_double_implication weight?;
 
 constraint_double_implication: constraint_implication (TK_OP_DOUBLE_IMPLIC constraint_implication)*;
 
