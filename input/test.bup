@@ -81,7 +81,6 @@ predicates:
         true;
     }
 
-    test
 
 constraints:
     //varboolpred2(a,b);
@@ -100,9 +99,12 @@ constraints:
     //predInclude2(a);
     //pred(varArray2);
     //true;
-    a | b @10;
-    a;
+    a | b @2;
+    !a @1;
+    !b @3;
 
 
 output:
     "sizeof(varArray)= " ++ sizeof(varArray);
+    "a=" ++ a;
+    "b=" ++ b;

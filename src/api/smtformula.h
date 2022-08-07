@@ -414,7 +414,7 @@ public:
 	void addMCardinality(const std::vector<literal> &x, std::vector<literal> &y, int m, bool leqclauses, bool geqclauses);
 
 
-	//Adds the codification of "y is the result of merging x1,x2". Used in cardinality constraint
+	//Adds the codification of "y is the result off merging x1,x2". Used in cardinality constraint
 	void addMerge(const std::vector<literal> &x1, const std::vector<literal> &x2, std::vector<literal> &y, bool leqclauses, bool geqclauses);
 };
 

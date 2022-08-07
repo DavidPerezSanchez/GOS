@@ -18,9 +18,10 @@ using namespace smtapi;
  */
 class DimacsFileEncoder : public FileEncoder {
 private:
-	
-	std::string solver;
-	
+
+    std::string solver;
+    std::string solverpath;
+
 	void createSATFile(std::ostream & os, SMTFormula * f) const;
 
 	void createMaxSATFile(std::ostream & os, SMTFormula * f) const;
@@ -30,17 +31,20 @@ private:
 public:	
   
 	//Constructor
-	DimacsFileEncoder(Encoding * enc, const std::string &solver); 
+	DimacsFileEncoder(Encoding * enc, const std::string &solver, const std::string &solverpath);
 	
 	//Destructor
 	~DimacsFileEncoder();
 
 	virtual void createFile(std::ostream & os, SMTFormula * f) const;
 
-	bool checkSAT(int lb, int ub);
+	bool checkSAT(int lb, int ub) override;
 	
-	bool optimize(int lb, int ub);
-	
+	bool optimize(int lb, int ub) override;
+
+    virtual int getObjective() const override;
+
+	std::string getSolver() const override;
 };
 
 #endif

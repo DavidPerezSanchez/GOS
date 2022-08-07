@@ -58,3 +58,6 @@ void FileEncoder::setTmpFileName(const std::string & filename){
 	this->tmpfilename = filename;
 }
 
+std::string FileEncoder::getSolver() const {
+    return "fileencoder";
+}

@@ -55,6 +55,7 @@ public:
 
 
 	//Statistics
+    virtual std::string getSolver() const = 0;
 	float getCheckTime() const;
 	float getSolverCheckTime() const;
 	int getNBoolVars() const;

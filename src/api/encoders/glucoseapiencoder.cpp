@@ -83,8 +83,8 @@ bool GlucoseAPIEncoder::assertAndCheck(int lb, int ub, std::vector<literal> * as
 			consistent = false;
 			break;
 		}
-		consistent = s->simplify();
 	}
+    consistent &= s->simplify();
 
 	lastVar = workingFormula.f->getNBoolVars();
 	lastClause = workingFormula.f->getNClauses()-1;
@@ -141,4 +141,8 @@ Lit GlucoseAPIEncoder::getLiteral(const literal & l, const std::vector<Var> & va
 		else
 			return mkLit(vars[l.v.id],!l.sign);
 	}
+}
+
+std::string GlucoseAPIEncoder::getSolver() const {
+    return "glucose";
 }

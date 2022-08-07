@@ -95,7 +95,6 @@ public:
                     );
                 }
                 IntValueRef weight = visit(ctx->weight());
-                std::cout << weight->getRealValue() << std::endl;
                 this->_f->addSoftClause(result->clauses.front(), weight->getRealValue());
             }
             else {
