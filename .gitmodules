@@ -1,0 +1,9 @@
+[submodule "src/api/solvers/openwbo"]
+	path = src/api/solvers/openwbo-repo
+	url = https://github.com/sat-group/open-wbo
+[submodule "src/api/solvers/minisat"]
+	path = src/api/solvers/minisat-repo
+	url = https://github.com/niklasso/minisat
+[submodule "src/api/solvers/glucose-repo"]
+	path = src/api/solvers/glucose-repo
+	url = https://github.com/mi-ki/glucose-syrup
