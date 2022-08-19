@@ -33,14 +33,6 @@ public:
         return BUPBaseVisitor::visitViewpointBlock(ctx);
     }
 
-    antlrcpp::Any visitConstraintDefinitionBlock(BUPParser::ConstraintDefinitionBlockContext *ctx) override {
-        return nullptr;
-    }
-
-    antlrcpp::Any visitOutputBlock(BUPParser::OutputBlockContext *ctx) override {
-        return nullptr;
-    }
-
 
     antlrcpp::Any visitDefinition(BUPParser::DefinitionContext *ctx) override {
         try {
@@ -60,13 +52,25 @@ public:
 
         if(this->currentScope->existsInScope(name)) {
             throw CSP2SATAlreadyExistException(
+                {
+                    st->parsedFiles.front()->getPath(),
                     ctx->name->getLine(),
-                    ctx->name->getCharPositionInLine(),
-                    name
+                    ctx->name->getCharPositionInLine()
+                },
+                name
             );
         }
 
-        if (ctx->arrayDefinition() && !ctx->arrayDefinition()->expr().empty()) {
+        if (ctx->arrayDefinition() && !ctx->arrayDefinition()->children.empty()) {
+            if(ctx->arrayDefinition()->expr().empty())
+                throw CSP2SATArrayBoundsException(
+                    {
+                        st->parsedFiles.front()->getPath(),
+                        ctx->name->getLine(),
+                        ctx->name->getCharPositionInLine()
+                    }, true
+                );
+
             std::vector<int> dimentions;
             for (auto expr : ctx->arrayDefinition()->expr()) {
                 ValueRef a = visit(expr);
@@ -93,22 +97,42 @@ public:
 
         if(this->currentScope->existsInScope(name)) {
             throw CSP2SATAlreadyExistException(
+                {
+                    st->parsedFiles.front()->getPath(),
                     ctx->name->getLine(),
-                    ctx->name->getCharPositionInLine(),
-                    name
+                    ctx->name->getCharPositionInLine()
+                },
+                name
             );
         }
 
 
-        if (ctx->arrayDefinition() && !ctx->arrayDefinition()->expr().empty()) {
+        if (ctx->arrayDefinition() && !ctx->arrayDefinition()->children.empty()) {
+            if(ctx->arrayDefinition()->expr().empty())
+                throw CSP2SATArrayBoundsException(
+                        {
+                                st->parsedFiles.front()->getPath(),
+                                ctx->name->getLine(),
+                                ctx->name->getCharPositionInLine()
+                        }, true
+                );
             std::vector<int> dimentions;
             for (auto expr : ctx->arrayDefinition()->expr()) {
                 ValueRef a = visit(expr);
                 dimentions.push_back(a->getRealValue());
             }
 
-            newConst = VisitorsUtils::defineNewArray(ctx->name->getText(), currentScope, dimentions, type, this->_f,
-                                             this->params);
+            try {
+                newConst = VisitorsUtils::defineNewArray(ctx->name->getText(), currentScope, dimentions, type, this->_f,
+                                                         this->params);
+            } catch (CSP2SATInputNotFoundValue e) {
+                e.setLocation({
+                st->parsedFiles.front()->getPath(),
+                ctx->name->getLine(),
+                ctx->name->getCharPositionInLine()
+                });
+                throw e;
+            }
         } else if (type->getTypeIndex() == SymbolTable::tCustom) {
             newConst = VisitorsUtils::definewNewCustomTypeParam(ctx->name->getText(), Utils::as<StructSymbol>(type), currentScope,
                                                         this->_f, this->params);
@@ -151,9 +175,12 @@ public:
         }
         catch (GOSException &e) {
             throw CSP2SATNotExistsException(
+                {
+                    st->parsedFiles.front()->getPath(),
                     ctx->start->getLine(),
-                    ctx->start->getCharPositionInLine(),
-                    ctx->getText()
+                    ctx->start->getCharPositionInLine()
+                },
+                ctx->getText()
             );
         }
     }
@@ -163,9 +190,12 @@ public:
             return GOSCustomBaseVisitor::visitListResultExpr(ctx);
         } else {
             throw CSP2SATStringOnlyOutputException(
+                {
+                    st->parsedFiles.front()->getPath(),
                     ctx->start->getLine(),
-                    ctx->start->getCharPositionInLine(),
-                    ctx->getText()
+                    ctx->start->getCharPositionInLine()
+                },
+                ctx->getText()
             );
         }
     }

@@ -10,11 +10,22 @@
 
 #include <string>
 #include <sstream> // std::istringstream
+#include <fstream>
 #include <vector>
 #include <memory>
 
 namespace GOS {
 namespace Utils {
+
+std::string readFile(const std::string& name) {
+    std::ifstream inFile;
+    inFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+    inFile.open(name); //open the input file
+    std::stringstream inputStream;
+    inputStream << inFile.rdbuf(); //read the file
+    std::string inputStr = inputStream.str(); //str holds the content of the file
+    return inputStr;
+}
 
 bool check_number(const std::string & str) {
     std::string num = str;
@@ -81,6 +92,44 @@ std::string toRawString(std::string const& in)
 template<class T, class U>
 std::shared_ptr<T> as(U param) {
     return std::dynamic_pointer_cast<T>(param);
+}
+
+template<class T, class U>
+bool is(U param) {
+    return std::dynamic_pointer_cast<T>(param) != nullptr;
+}
+
+std::vector<std::string> string_split(std::string s, const char delimiter)
+{
+    size_t start=0;
+    size_t end=s.find_first_of(delimiter);
+
+    std::vector<std::string> output;
+
+    while (end <= std::string::npos)
+    {
+        output.emplace_back(s.substr(start, end-start));
+
+        if (end == std::string::npos)
+            break;
+
+        start=end+1;
+        end = s.find_first_of(delimiter, start);
+    }
+
+    return output;
+}
+
+std::vector<std::string> string_split2(std::string s, const char delimiter)
+{
+    std::vector<std::string> res = {""};
+    for(char c : s) {
+        if(c == delimiter)
+            res.emplace_back("");
+        else res.back() += c;
+    }
+
+    return res;
 }
 
 }

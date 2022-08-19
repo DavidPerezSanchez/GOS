@@ -20,8 +20,9 @@
 #include <controllers/basiccontroller.h>
 #include "Symtab/SymbolTable.h"
 
-// custom listener
+// custom visitor
 #include "Visitors/GOSTypeVarDefinitionVisitor.h"
+#include "Visitors/GOSPredVisitor.h"
 #include "Visitors/GOSConstraintsVisitor.h"
 
 // custom error
@@ -37,46 +38,40 @@
 namespace GOS {
 
 class GOSCompiler {
-private:
-    bool synError = false;
 public:
-    GOSCompiler(std::string inStr, std::string modelStr, SolvingArguments *sargs) : inStr(std::move(inStr)), modelStr(std::move(modelStr)), sargs(sargs) {
+    GOSCompiler(std::string inputFilename, std::string modelFilename, SolvingArguments *sargs) :
+        _inputFilename(std::move(inputFilename)), _modelFilename(std::move(modelFilename)), sargs(sargs)
+    {
         symbolTable = new SymbolTable();
         _f = new SMTFormula();
     }
 
-    auto runVisitor(BUPBaseVisitor& visitor, std::string inStr, bool showSintaxErrors = true){
-        antlr4::ANTLRInputStream input(inStr);
-        BUPLexer lexer(&input);
-        antlr4::CommonTokenStream tokens(&lexer);
-        BUPParser parser(&tokens);
-        if(!showSintaxErrors)
-            parser.removeErrorListeners();
-        BUPParser::Csp2satContext *tree = parser.csp2sat();
-        if(parser.getNumberOfSyntaxErrors() > 0)
-            synError = true;
-        return visitor.visit(tree);
-    }
-
-    ParamJSONRef runInputVisitor(JSONBaseVisitor& visitor, std::string inStr){
-        antlr4::ANTLRInputStream input2(inStr);
-        JSONLexer lexer2(&input2);
-        antlr4::CommonTokenStream tokens2(&lexer2);
-        JSONParser parser2(&tokens2);
-        JSONParser::JsonContext *tree2 = parser2.json();
-        return visitor.visit(tree2);
-    }
-
     void run(){
-        GOSJSONInputVisitor inputPreJsonVisitor;
-        ParamJSONRef readParams = runInputVisitor(inputPreJsonVisitor, inStr);
+        // Parse input file
+        ParamJSONRef readParams = runInputVisitor();
+
+        std::string modelStr;
+        bool synError = false;
+        // Create model file parse tree
+        BUPFileRef modelFile = BUPFile::Create(_modelFilename);
+        symbolTable->parsedFiles.emplace_back(modelFile);
+        BUPParser::Csp2satContext *tree = modelFile->getParser()->csp2sat();
+        if( modelFile->getParser()->getNumberOfSyntaxErrors() > 0)
+            synError = true;
+        //return visitor.visit(tree);
 
         GOSTypeVarDefinitionVisitor visitor(symbolTable, _f, readParams);
-        runVisitor(visitor, modelStr);
+        //runVisitor(visitor, modelStr);
+        visitor.visit(tree);
+
+        GOSPredVisitor predVisitor(symbolTable, _f, _modelFilename);
+        //runVisitor(predVisitor, modelStr);
+        predVisitor.visit(tree);
 
         if(!symbolTable->errors){
             GOSConstraintsVisitor constraintsVisitor(symbolTable, _f);
-            runVisitor(constraintsVisitor, modelStr, false);
+            //runVisitor(constraintsVisitor, modelStr, false);
+            constraintsVisitor.visit(tree);
 
             if(!synError){
                 if(!symbolTable->errors){
@@ -86,7 +81,8 @@ public:
 
                     if(encoding.isSat()){
                         CSP2SATOutputVisitor outputVisitor(symbolTable, _f);
-                        bool customOutput = runVisitor(outputVisitor, modelStr, false);
+                        //bool customOutput = runVisitor(outputVisitor, modelStr, false);
+                        bool customOutput = outputVisitor.visit(tree);
                         if(!customOutput)
                             encoding.printModelSolution(std::cout);
                     }
@@ -106,10 +102,27 @@ public:
 
 private:
     SMTFormula *_f;
-    std::string inStr;
-    std::string modelStr;
+    std::filesystem::path _inputFilename;
+    std::filesystem::path _modelFilename;
     SymbolTable *symbolTable;
     SolvingArguments *sargs;
+
+    ParamJSONRef runInputVisitor(){
+        std::string inStr;
+        try {
+            inStr = Utils::readFile(_inputFilename);
+        } catch(std::ifstream::failure e) {
+            std::cerr << "Error reading file: " << _inputFilename << std::endl;
+            abort();
+        }
+        GOSJSONInputVisitor visitor(_inputFilename);
+        antlr4::ANTLRInputStream input(inStr);
+        JSONLexer lexer(&input);
+        antlr4::CommonTokenStream tokens(&lexer);
+        JSONParser parser(&tokens);
+        JSONParser::JsonContext *tree = parser.json();
+        return visitor.visit(tree);
+    }
 
 };
 

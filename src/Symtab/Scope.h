@@ -32,12 +32,12 @@ class BaseScope : public Scope {
 public:
     virtual ~BaseScope() {}
 
-    void define(SymbolRef sym) override {
-        symbols[sym->getName()] = sym;
-    }
-
     void define(std::string name, SymbolRef sym) {
         symbols[name] = sym;
+    }
+
+    void define(SymbolRef sym) override {
+        define(sym->getName(), sym);
     }
 
     ScopeRef getEnclosingScope() override {
@@ -45,7 +45,7 @@ public:
     }
 
     SymbolRef resolve(const std::string& name) override {
-        if ( symbols.find(name) != symbols.end() )
+        if (existsInScope(name))
             return symbols[name];
         if ( enclosingScope != nullptr )
             return enclosingScope->resolve(name);
@@ -54,6 +54,10 @@ public:
 
     std::map<std::string, SymbolRef> getScopeSymbols() override {
         return this->symbols;
+    }
+
+    void resetDefinitions() {
+        symbols.clear();
     }
 
     bool existsInScope(const std::string &name) override {
@@ -84,6 +88,7 @@ public:
     std::string getFullName() override {
         return "";
     }
+
 protected:
     GlobalScope() : BaseScope(nullptr) {}
 };

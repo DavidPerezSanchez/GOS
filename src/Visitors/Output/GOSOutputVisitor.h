@@ -24,19 +24,6 @@ public:
         return false;
     }
 
-
-    antlrcpp::Any visitEntityDefinitionBlock(BUPParser::EntityDefinitionBlockContext *ctx) override {
-        return nullptr;
-    }
-
-    antlrcpp::Any visitViewpointBlock(BUPParser::ViewpointBlockContext *ctx) override {
-        return nullptr;
-    }
-
-    antlrcpp::Any visitConstraintDefinitionBlock(BUPParser::ConstraintDefinitionBlockContext *ctx) override {
-        return nullptr;
-    }
-
     antlrcpp::Any visitOutputBlock(BUPParser::OutputBlockContext *ctx) override {
         for(auto str : ctx->string()) {
             try{
@@ -71,8 +58,11 @@ public:
             }
             else {
                 throw CSP2SATStringOnlyOutputException(
-                    ctx->list()->start->getLine(),
-                    ctx->list()->start->getCharPositionInLine(),
+                    {
+                        st->parsedFiles.front()->getPath(),
+                        ctx->list()->start->getLine(),
+                        ctx->list()->start->getCharPositionInLine()
+                    },
                     ctx->list()->getText()
                 );
             }

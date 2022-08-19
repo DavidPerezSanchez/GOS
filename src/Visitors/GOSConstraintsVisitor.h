@@ -8,7 +8,10 @@
 #include "../Symtab/Symbol/formulaReturn.h"
 #include "../Symtab/Symbol/Valued/VariableSymbol.h"
 #include "../Symtab/Symbol/Scoped/ArraySymbol.h"
+#include "../Symtab/Symbol/PredSymbol.h"
 #include "../GOSUtils.h"
+#include "GOSCustomBaseVisitor.h"
+#include "GOSTypeVarDefinitionVisitor.h"
 #include <vector>
 #include <map>
 #include <string>
@@ -20,19 +23,6 @@ class GOSConstraintsVisitor : public GOSCustomBaseVisitor {
 public:
     explicit GOSConstraintsVisitor(SymbolTable *symbolTable, SMTFormula *f) : GOSCustomBaseVisitor(symbolTable,
                                                                                                    f) {}
-
-
-    antlrcpp::Any visitEntityDefinitionBlock(BUPParser::EntityDefinitionBlockContext *ctx) override {
-        return nullptr;
-    }
-
-    antlrcpp::Any visitViewpointBlock(BUPParser::ViewpointBlockContext *ctx) override {
-        return nullptr;
-    }
-
-    antlrcpp::Any visitOutputBlock(BUPParser::OutputBlockContext *ctx) override {
-        return nullptr;
-    }
 
     antlrcpp::Any visitConstraintDefinitionBlock(BUPParser::ConstraintDefinitionBlockContext *ctx) override {
         for (auto constraint : ctx->constraintDefinition()) {
@@ -61,7 +51,6 @@ public:
 
 
     antlrcpp::Any visitConstraintDefinition(BUPParser::ConstraintDefinitionContext *ctx) override {
-
         try {
             BUPBaseVisitor::visitConstraintDefinition(ctx);
         }
@@ -79,7 +68,6 @@ public:
                 this->_f->addClause(clause);
         } else visit(ctx->constraint_aggreggate_op());
         return nullptr;
-
     }
 
     antlrcpp::Any visitConstraint_base(BUPParser::Constraint_baseContext *ctx) override {
@@ -90,11 +78,16 @@ public:
                 clause->addClause(Utils::as<VariableSymbol>(valSym)->getVar());
             } else {
                 throw CSP2SATParamAsConstraintException(
+                    {
+                        st->parsedFiles.front()->getPath(),
                         ctx->start->getLine(),
-                        ctx->start->getCharPositionInLine(),
-                        ctx->getText()
+                        ctx->start->getCharPositionInLine()
+                    },
+                    ctx->getText()
                 );
             }
+        } else if (ctx->predCall()) {
+            visit(ctx->predCall());
         } else if (ctx->TK_BOOLEAN_VALUE()) {
             if (ctx->TK_BOOLEAN_VALUE()->getText() == "true")
                 clause->addClause(this->_f->trueVar());
@@ -123,10 +116,13 @@ public:
                         clauResult |= !currClause.v.front();
                     else {
                         throw CSP2SATInvalidFormulaException(
+                            {
+                                st->parsedFiles.front()->getPath(),
                                 ctx->start->getLine(),
-                                ctx->start->getCharPositionInLine(),
-                                ctx->getText(),
-                                "You can only negate literals or AND lists"
+                                ctx->start->getCharPositionInLine()
+                            },
+                            ctx->getText(),
+                            "You can only negate literals or AND lists"
                         );
                     }
                 }
@@ -164,15 +160,17 @@ public:
             }
         } else {
             throw CSP2SATInvalidFormulaException(
+                {
+                    st->parsedFiles.front()->getPath(),
                     ctx->start->getLine(),
-                    ctx->start->getCharPositionInLine(),
-                    ctx->getText(),
-                    "Invalid Constraint AND"
+                    ctx->start->getCharPositionInLine()
+                },
+                ctx->getText(),
+                "Invalid Constraint AND"
             );
         }
         return newClauses;
     }
-
 
     antlrcpp::Any visitCOrExpression(BUPParser::COrExpressionContext *ctx) override {
         formulaReturnRef result = visit(ctx->constraint_or_2(0));
@@ -198,19 +196,25 @@ public:
                         newClauses->addClause(orClause | andClause);
                     else {
                         throw CSP2SATInvalidFormulaException(
+                            {
+                                st->parsedFiles.front()->getPath(),
                                 ctx->start->getLine(),
-                                ctx->start->getCharPositionInLine(),
-                                ctx->getText(),
-                                "AND_CLAUSULES | AND_LITERALS not allowed"
+                                ctx->start->getCharPositionInLine()
+                            },
+                            ctx->getText(),
+                            "AND_CLAUSULES | AND_LITERALS not allowed"
                         );
                     }
                 }
             } else {
                 throw CSP2SATInvalidFormulaException(
+                    {
+                        st->parsedFiles.front()->getPath(),
                         ctx->start->getLine(),
-                        ctx->start->getCharPositionInLine(),
-                        ctx->getText(),
-                        "AND_CLAUSULES | AND_LITERALS not allowed"
+                        ctx->start->getCharPositionInLine()
+                    },
+                    ctx->getText(),
+                    "AND_CLAUSULES | AND_LITERALS not allowed"
                 );
             }
 
@@ -241,10 +245,13 @@ public:
             }
         } else {
             throw CSP2SATInvalidFormulaException(
+                {
+                    st->parsedFiles.front()->getPath(),
                     ctx->start->getLine(),
-                    ctx->start->getCharPositionInLine(),
-                    ctx->getText(),
-                    "Constraint OR list elements must be propositional formulas"
+                    ctx->start->getCharPositionInLine()
+                },
+                ctx->getText(),
+                "Constraint OR list elements must be propositional formulas"
             );
         }
 
@@ -253,7 +260,6 @@ public:
 
         return newClauses;
     }
-
 
     antlrcpp::Any visitConstraint_implication(BUPParser::Constraint_implicationContext *ctx) override {
         formulaReturnRef result = visit(ctx->constraint_or(0));
@@ -276,10 +282,13 @@ public:
                             result |= !currLeft.v.front();
                         } else {
                             throw CSP2SATInvalidFormulaException(
+                                {
+                                    st->parsedFiles.front()->getPath(),
                                     ctx->start->getLine(),
-                                    ctx->start->getCharPositionInLine(),
-                                    ctx->getText(),
-                                    "Only allowed AND_LITERALS => OR_LITERALS"
+                                    ctx->start->getCharPositionInLine()
+                                },
+                                ctx->getText(),
+                                "Only allowed AND_LITERALS => OR_LITERALS"
                             );
                         }
                     }
@@ -291,19 +300,25 @@ public:
                             res->addClause(andLiteral | !leftExpr->clauses.front().v.front());
                         } else
                             throw CSP2SATInvalidFormulaException(
+                                {
+                                    st->parsedFiles.front()->getPath(),
                                     ctx->start->getLine(),
-                                    ctx->start->getCharPositionInLine(),
-                                    ctx->getText(),
-                                    "Only allowed AND_LITERALS => OR_LITERALS"
+                                    ctx->start->getCharPositionInLine()
+                                },
+                                ctx->getText(),
+                                "Only allowed AND_LITERALS => OR_LITERALS"
                             );
                     }
                     leftExpr = res;
                 } else {
                     throw CSP2SATInvalidFormulaException(
+                        {
+                            st->parsedFiles.front()->getPath(),
                             ctx->start->getLine(),
-                            ctx->start->getCharPositionInLine(),
-                            ctx->getText(),
-                            "Only allowed AND_LITERALS => OR_LITERALS"
+                            ctx->start->getCharPositionInLine()
+                        },
+                        ctx->getText(),
+                        "Only allowed AND_LITERALS => OR_LITERALS"
                     );
                 }
             }
@@ -350,18 +365,24 @@ public:
                 res = result;
             } else {
                 throw CSP2SATInvalidFormulaException(
+                    {
+                        st->parsedFiles.front()->getPath(),
                         ctx->start->getLine(),
-                        ctx->start->getCharPositionInLine(),
-                        ctx->getText(),
-                        "Only allowed LITERAL <=> OR_LITERALS and LITERAL <=> AND_LITERALS"
+                        ctx->start->getCharPositionInLine()
+                    },
+                    ctx->getText(),
+                    "Only allowed LITERAL <=> OR_LITERALS and LITERAL <=> AND_LITERALS"
                 );
             }
         } else if (ctx->constraint_implication().size() != 1) {
             throw CSP2SATInvalidFormulaException(
+                {
+                    st->parsedFiles.front()->getPath(),
                     ctx->start->getLine(),
-                    ctx->start->getCharPositionInLine(),
-                    ctx->getText(),
-                    "Only allowed LITERAL <=> OR_LITERALS and LITERAL <=> AND_LITERALS"
+                    ctx->start->getCharPositionInLine()
+                },
+                ctx->getText(),
+                "Only allowed LITERAL <=> OR_LITERALS and LITERAL <=> AND_LITERALS"
             );
         }
 
@@ -394,8 +415,11 @@ public:
                 }
             } else {
                 throw CSP2SATInvalidExpressionTypeException(
-                        ctx->expr(i)->start->getLine(),
-                        ctx->expr(i)->start->getCharPositionInLine(),
+                        {
+                                st->parsedFiles.front()->getPath(),
+                                ctx->expr(i)->start->getLine(),
+                                ctx->expr(i)->start->getCharPositionInLine()
+                        },
                         ctx->expr(i)->getText(),
                         VisitorsUtils::getTypeName(SymbolTable::tInt),
                         VisitorsUtils::getTypeName(SymbolTable::tBool)
@@ -425,9 +449,12 @@ public:
                     this->_f->addAMK(literalList, k->getRealValue());
                 } else {
                     throw CSP2SATBadCardinalityConstraint(
+                        {
+                            st->parsedFiles.front()->getPath(),
                             ctx->start->getLine(),
-                            ctx->start->getCharPositionInLine(),
-                            ctx->getText()
+                            ctx->start->getCharPositionInLine()
+                        },
+                        ctx->getText()
                     );
                 }
             } else {
@@ -439,9 +466,12 @@ public:
                     this->_f->addAMO(literalList);
                 } else {
                     throw CSP2SATBadCardinalityConstraint(
+                        {
+                            st->parsedFiles.front()->getPath(),
                             ctx->start->getLine(),
-                            ctx->start->getCharPositionInLine(),
-                            ctx->getText()
+                            ctx->start->getCharPositionInLine()
+                        },
+                        ctx->getText()
                     );
                 }
             }
@@ -450,12 +480,144 @@ public:
         }
         catch (GOSException &e) {
             throw GOSException(
+                {
+                    st->parsedFiles.front()->getPath(),
                     ctx->start->getLine(),
-                    ctx->start->getCharPositionInLine(),
-                    ctx->list()->getText() + " must be a list of literals"
+                    ctx->start->getCharPositionInLine()
+                },
+                ctx->list()->getText() + " must be a list of literals"
             );
         }
     }
+
+    antlrcpp::Any visitPredCall(BUPParser::PredCallContext *ctx) override {
+        // Get call parameters
+        std::vector<SymbolRef> paramsSymbols;
+        PredSymbol::Signature signature;
+        signature.name = ctx->name->getText();
+        if (ctx->predCallParams()) {
+            this->accessingNotLeafVariable = true; // TODO ask Mateu if this is correct
+            // Evaluate all parameters from call
+            for (auto predCallParamCtx: ctx->predCallParams()->predCallParam()) {
+                SymbolRef sym;
+                antlrcpp::Any res = visit(predCallParamCtx);
+                if (res.is<ValueRef>()) { // Anonymous constant
+                    ValueRef val = res.as<ValueRef>();
+                    AssignableSymbolRef assignableSym;
+                    if(val->isBoolean())
+                        assignableSym = AssignableSymbol::Create("",SymbolTable::_boolean);
+                    else assignableSym = AssignableSymbol::Create("",SymbolTable::_integer);
+                    assignableSym->setValue(val);
+                    sym = assignableSym;
+                }
+                else sym = res; // Defined symbol
+                paramsSymbols.emplace_back(sym);
+
+                // Construct signature to lookup the predicate in the symbol table
+                const int type = sym->getType()->getTypeIndex();
+                PredSymbol::ParamRef param;
+                if (type == SymbolTable::tArray) {
+                    ArraySymbolRef arraySym = Utils::as<ArraySymbol>(sym);
+                    PredSymbol::ParamArrayRef paramArray(new PredSymbol::ParamArray);
+                    paramArray->elemType = arraySym->getElementsType()->getTypeIndex();
+                    paramArray->nDimensions = arraySym->getNDimensions();
+                    param = paramArray;
+                }
+                else param.reset(new PredSymbol::Param);
+                param->name = sym->getName();
+                param->type = type;
+                signature.params.emplace_back(param);
+            }
+            this->accessingNotLeafVariable = false;
+        }
+
+        // Check if a predicate with same signature is defined
+        SymbolRef predSym = this->currentScope->resolve(signature.toStringSymTable());
+        if (predSym == nullptr) {
+            std::map<std::string, SymbolRef> symbols = st->gloabls->getScopeSymbols(); // pred definitions are global
+            std::vector<std::pair<std::string, ExceptionLocation>> candidates;
+            for (auto entry : symbols) {
+                if (Utils::is<PredSymbol>(entry.second)) {
+                    PredSymbolRef pred = Utils::as<PredSymbol>(entry.second);
+                    const bool predHasSameName = Utils::string_split(entry.first, '(')[0] == signature.name;
+                    if (predHasSameName) {
+                        const std::string candName = pred->getSignature().toString();
+                        ExceptionLocation candLoc = {
+                                pred->getLocation().file,
+                                pred->getLocation().line,
+                                pred->getLocation().col
+                        };
+                        candidates.emplace_back(std::make_pair(candName, candLoc));
+                    }
+                }
+            }
+            throw CSP2SATPredNotExistsException(
+                {
+                    st->parsedFiles.front()->getPath(),
+                    ctx->start->getLine(),
+                    ctx->start->getCharPositionInLine()
+                },
+                signature.toString(),
+                candidates
+            );
+        }
+        PredSymbolRef pred = Utils::as<PredSymbol>(predSym);
+
+        // Setup scoped exec environment and compile predicate body
+        this->currentScope = LocalScope::Create(this->currentScope);
+        for (int i = 0; i < paramsSymbols.size(); i++) {
+            SymbolRef sym = paramsSymbols[i];
+            PredSymbol::ParamRef param = pred->getSignature().params[i];
+            assert(param->type == sym->getType()->getTypeIndex());
+            Utils::as<BaseScope>(this->currentScope)->define(param->name, sym);
+        }
+        visit(pred->getPredDefTree()->predDefBody());
+        this->currentScope = this->currentScope->getEnclosingScope();
+
+        return nullptr;
+    }
+
+    antlrcpp::Any visitVarDefinition(BUPParser::VarDefinitionContext *ctx) override { // TODO copied from TypeVarDefinitionVisitor
+        BUPBaseVisitor::visitVarDefinition(ctx);
+        SymbolRef newVar;
+        std::string name = ctx->name->getText();
+
+        if(this->currentScope->existsInScope(name)) {
+            throw CSP2SATAlreadyExistException(
+                {
+                    st->parsedFiles.front()->getPath(),
+                    ctx->name->getLine(),
+                    ctx->name->getCharPositionInLine()
+                },
+                name
+            );
+        }
+
+        if (ctx->arrayDefinition() && !ctx->arrayDefinition()->expr().empty()) {
+            std::vector<int> dimentions;
+            for (auto expr : ctx->arrayDefinition()->expr()) {
+                ValueRef a = visit(expr);
+                dimentions.push_back(a->getRealValue());
+            }
+            newVar = VisitorsUtils::defineNewArray(ctx->name->getText(), currentScope, dimentions, SymbolTable::_varbool,
+                                                   this->_f, nullptr /* never used since not param*/);
+        } else {
+            newVar = VariableSymbol::Create(ctx->name->getText(), this->_f);
+        }
+        currentScope->define(newVar);
+
+        return nullptr;
+
+    }
+
+    antlrcpp::Any visitPredCallParams(BUPParser::PredCallParamsContext *ctx) override {
+        return visitChildren(ctx);
+    }
+
+    antlrcpp::Any visitPredCallParam(BUPParser::PredCallParamContext *ctx) override {
+        return BUPBaseVisitor::visitPredCallParam(ctx);
+    }
+
 };
 
 }

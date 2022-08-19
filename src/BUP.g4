@@ -11,6 +11,7 @@ BLOCK_COMMENT : '/*' .*? '*/' -> skip;
 // basic structure
 TK_ENTITIES: 'entities';
 TK_VIEWPOINT: 'viewpoint';
+TK_PREDICATES: 'predicates';
 TK_CONSTRAINTS: 'constraints';
 TK_OUTPUT: 'output';
 
@@ -24,8 +25,6 @@ TK_ASSIGN: ':=';
 TK_PARAM: 'param';
 TK_VAR: 'var';
 TK_AUX: 'aux';
-
-TK_CONSTRAINT: 'constraint';
 
 TK_INT_VALUE: ('1'..'9')('0'..'9')* | '0';
 TK_BOOLEAN_VALUE: 'true' | 'false';
@@ -49,7 +48,6 @@ TK_RCLAUDATOR: ']';
 TK_LBRACKET: '{';
 TK_RBRACKET: '}';
 
-
 TK_COMMA: ',';
 TK_DOT: '.';
 
@@ -57,8 +55,10 @@ TK_WHERE: 'where';
 
 TK_FORALL: 'forall';
 
+TK_INCLUDE: 'include';
 
 //EXPRESSIONS
+TK_OP_AGG_SIZEOF: 'sizeof';
 TK_OP_AGG_SUM: 'sum';
 TK_OP_AGG_LENGTH: 'length';
 TK_OP_AGG_MAX: 'max';
@@ -109,38 +109,54 @@ TK_STRING_AGG_OP: '++';
 
 // SINTÀCTIC
 
-csp2sat: entityDefinitionBlock? viewpointBlock constraintDefinitionBlock outputBlock?;
-
-definition: varDefinition | paramDefinition;
+csp2sat: entityDefinitionBlock? viewpointBlock predDefBlock? constraintDefinitionBlock outputBlock?;
 
 entityDefinitionBlock: TK_ENTITIES TK_COLON entityDefinition* ;
-entityDefinition: name=TK_IDENT TK_LBRACKET definition* TK_RBRACKET TK_SEMICOLON;
+entityDefinition: name=TK_IDENT TK_LBRACKET (definition TK_SEMICOLON)* TK_RBRACKET TK_SEMICOLON;
 
-viewpointBlock: TK_VIEWPOINT TK_COLON definition*;
+viewpointBlock: TK_VIEWPOINT TK_COLON (definition TK_SEMICOLON)*;
+
+// TODO Parlar sobre com implementar els predicats per poder fer <constraint: XOR(a,b) -> XOR(c,b);>
+// Mirar si podem resoldre les funcions en temps de compilacio, llavors no podrien rebre variables de decisió
+// En canvi els predicats sí (pensar com)
+predDefBlock: TK_PREDICATES TK_COLON predDefBlockBody;
+predDefBlockBody: (predDef | predInclude)*;
+predDef: name=TK_IDENT TK_LPAREN predDefParams? TK_RPAREN TK_LBRACKET predDefBody TK_RBRACKET;
+predDefParams: definition (TK_COMMA definition)*; // TODO permetre passar estructures (llistes) Cal pensar si passar entities
+predDefBody: predVarDefinitionBlock constraintDefinition+;
+predCall: name=TK_IDENT TK_LPAREN predCallParams? TK_RPAREN;
+predCallParams: predCallParam (TK_COMMA predCallParam)*;
+predCallParam:
+    varAccess
+    | expr
+    | list;
+predVarDefinitionBlock: (varDefinition TK_SEMICOLON)*;
+predInclude: TK_INCLUDE TK_STRING TK_SEMICOLON;
+
+
+// TODO permetre passar de tot com a parametre
+// TODO soft constraints permetre pesos amb notació @ {expressió que es resolgui en temps de compilació}
+
+
 
 constraintDefinitionBlock: TK_CONSTRAINTS TK_COLON constraintDefinition*;
 
 outputBlock: TK_OUTPUT TK_COLON (string TK_SEMICOLON)*;
 
-varDefinition: TK_VAR type=TK_BASE_TYPE_BOOL? name=TK_IDENT arrayDefinition TK_SEMICOLON;
+definition: varDefinition | paramDefinition;
+varDefinition: TK_VAR type=TK_BASE_TYPE_BOOL? name=TK_IDENT arrayDefinition;
 paramDefinition: (
         TK_PARAM type=(TK_BASE_TYPE_BOOL | TK_BASE_TYPE_INT)
         | type=TK_IDENT
-    ) name=TK_IDENT arrayDefinition TK_SEMICOLON;
-
-arrayDefinition: (TK_LCLAUDATOR arraySize=expr TK_RCLAUDATOR)*;
-
+    ) name=TK_IDENT arrayDefinition;
+arrayDefinition: (TK_LCLAUDATOR arraySize=expr? TK_RCLAUDATOR)*;
 
 // EXPRESSIONS
 
-expr:
-    exprListAgg #exprTop
-    | condition=exprAnd TK_INTERROGANT op1=expr TK_COLON op2=expr #exprTernary;
+expr: condition=exprAnd (TK_INTERROGANT op1=expr TK_COLON op2=expr)?; // Ternary
 
-opAggregateExpr: TK_OP_AGG_LENGTH | TK_OP_AGG_MAX | TK_OP_AGG_MIN | TK_OP_AGG_SUM;
-exprListAgg:
-    opAggregateExpr TK_LPAREN list TK_RPAREN #exprListAggregateOp
-    | exprAnd #exprAnd2;
+opAggregateExpr: TK_OP_AGG_LENGTH | TK_OP_AGG_MAX | TK_OP_AGG_MIN | TK_OP_AGG_SUM | TK_OP_AGG_SIZEOF;
+exprListAgg: opAggregateExpr TK_LPAREN list TK_RPAREN;
 
 exprAnd: exprOr (TK_OP_LOGIC_AND exprOr)*;
 exprOr: exprEq (TK_OP_LOGIC_OR exprEq)*;
@@ -159,7 +175,7 @@ exprMulDivMod: exprNot (opMulDivMod exprNot)*;
 
 exprNot: op=TK_OP_LOGIC_NOT? expr_base;
 
-expr_base: valueBaseType | TK_LPAREN expr TK_RPAREN | varAccess;
+expr_base: valueBaseType | TK_LPAREN expr TK_RPAREN | varAccess | exprListAgg;
 
 varAccess: id=TK_IDENT varAccessObjectOrArray*;
 
@@ -175,7 +191,7 @@ valueBaseType: integer=TK_INT_VALUE | boolean=TK_BOOLEAN_VALUE;
 
 constraintDefinition: ( forall | ifThenElse | constraint ) TK_SEMICOLON;
 
-auxiliarListAssignation: TK_IDENT TK_IN list;
+auxiliarListAssignation: name=TK_IDENT TK_IN list;
 
 localConstraintDefinitionBlock: constraintDefinition*;
 
@@ -216,7 +232,7 @@ constraint_or_2:
     | constraint_and #cAnd;
 
 
-constraint_and: constraint_and_2 (TK_CONSTRAINT_AND  constraint_and_2)* #cAndExpression;
+constraint_and: constraint_and_2 (TK_CONSTRAINT_AND constraint_and_2)* #cAndExpression;
 
 constraint_and_2:
     TK_CONSTRAINT_AND TK_CONSTRAINT_AND TK_LPAREN list TK_RPAREN #cAndList
@@ -226,6 +242,7 @@ constraint_literal: TK_CONSTRAINT_NOT? constraint_base;
 
 constraint_base:
     varAccess
+    | predCall
     | TK_BOOLEAN_VALUE
     | TK_LPAREN constraint_expression TK_RPAREN;
 

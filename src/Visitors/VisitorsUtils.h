@@ -103,11 +103,11 @@ string getTypeName(const int tType) {
         case SymbolTable::tInt:
             return "int";
         case SymbolTable::tVarBool:
-            return "variable";
+            return "varBool";
         case SymbolTable::tArray:
             return "array";
         default:
-            return "custom type";
+            return "customType";
     }
 }
 
@@ -129,7 +129,7 @@ vector<literal> getLiteralVectorFromVariableArraySymbol(ArraySymbolRef variableA
         }
     } else {
         //cerr << "It must be a literal array" << endl;
-        throw GOSException(0, 0, variableArray->getFullName() + " must be a list of literals");
+        throw GOSException({"", 0, 0}, variableArray->getFullName() + " must be a list of literals");
     }
     return result;
 }
@@ -209,7 +209,8 @@ defineNewArray(
                 name,
                 enclosingScope,
                 elementsType,
-                dimentions[0]
+                dimentions[0],
+                dimentions.size()
         );
         for (int i = 0; i < dimentions[0]; ++i) {
             SymbolRef element;
@@ -239,7 +240,8 @@ defineNewArray(
                 name,
                 enclosingScope,
                 elementsType,
-                dimentions[0]
+                dimentions[0],
+                dimentions.size()
         );
         for (int i = 0; i < dimentions[0]; i++) {
             ArraySymbolRef constElement = defineNewArray(to_string(i), newDimention, restOfDimenstions, elementsType,
@@ -264,7 +266,25 @@ createArrayParamFromArrayType(string name, ScopeRef enclosingScope, ArraySymbolR
     return defineNewArray(name, enclosingScope, dimensions, arrayType->getElementsType(), formula, inParams);
 }
 
+template<typename T>
+static std::vector<T*>
+getRuleContextsRecursive(antlr4::ParserRuleContext* ctx) {
+    std::vector<T *> contexts;
 
+    if (ctx != nullptr) {
+        for (antlr4::tree::ParseTree *child: ctx->children) {
+            if (antlrcpp::is<T *>(child)) {
+                contexts.push_back(dynamic_cast<T *>(child));
+            } else {
+                antlr4::ParserRuleContext *childCtx = dynamic_cast<antlr4::ParserRuleContext *>(child);
+                std::vector<T *> childContexts = getRuleContextsRecursive<T>(childCtx);
+                contexts.insert(contexts.end(), childContexts.begin(), childContexts.end());
+            }
+        }
+    }
+
+    return contexts;
+}
 
 
 }

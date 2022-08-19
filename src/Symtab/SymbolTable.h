@@ -15,9 +15,11 @@
 #include "Value.h"
 #include "Symbol/Symbol.h"
 #include "../GOSUtils.h"
+#include "../BUPFile.h"
 #include <map>
 #include <string>
 #include <utility>
+#include <filesystem>
 
 namespace GOS {
 
@@ -26,7 +28,7 @@ public:
     //Flag to indicate if the flow is defining entities.
     static bool entityDefinitionBlock;
 
-    static const int tCustom = 0;
+    static const int tCustom = 0; // TODO enum?
     static const int tArray = 1;
     static const int tInt = 2;
     static const int tBool = 3;
@@ -48,6 +50,7 @@ public:
         this->gloabls->define(_varbool);
         this->gloabls->define(_string);
         this->gloabls->define(_formula);
+        parsedFiles = std::vector<BUPFileRef>();
     }
 
     void showAllDefinedVariables(){
@@ -55,6 +58,25 @@ public:
     }
 
     static bool errors;
+
+    std::vector<BUPFileRef> parsedFiles;
+
+    static std::string typeToString(int tType) {
+        switch (tType) {
+            case SymbolTable::tBool:
+                return "bool";
+            case SymbolTable::tInt:
+                return "int";
+            case SymbolTable::tVarBool:
+                return "varBool";
+            case SymbolTable::tArray:
+                return "array";
+            case SymbolTable::tCustom:
+                return "customType";
+            default:
+                throw std::invalid_argument("Type " + std::to_string(tType) + " not supported");
+        }
+    }
 
 private:
     static void iShowAllDefinedVariable(ScopeRef currentScope, const std::string& prefix = ""){
@@ -106,6 +128,13 @@ BuiltInTypeSymbolRef SymbolTable::_string = BuiltInTypeSymbol::Create("string", 
 BuiltInTypeSymbolRef SymbolTable::_formula = BuiltInTypeSymbol::Create("formula", SymbolTable::tFormula);
 bool SymbolTable::entityDefinitionBlock = false;
 bool SymbolTable::errors = false;
+const int SymbolTable::tCustom;
+const int SymbolTable::tArray;
+const int SymbolTable::tInt;
+const int SymbolTable::tBool;
+const int SymbolTable::tVarBool;
+const int SymbolTable::tString;
+const int SymbolTable::tFormula;
 
 }
 
