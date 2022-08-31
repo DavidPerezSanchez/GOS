@@ -95,7 +95,11 @@ public:
         ArraySymbolRef list = visit(ctx->list());
         ValueRef result = nullptr;
 
-        if(list->getElementsType()->getTypeIndex() == SymbolTable::tInt){
+        if(ctx->opAggregateExpr()->getText() == "sizeof") {
+            const int size = list->getSymbolVector().size();
+            result = IntValue::Create(size);
+        }
+        else if(list->getElementsType()->getTypeIndex() == SymbolTable::tInt){
             std::vector<SymbolRef> elements = list->getSymbolVector();
 
             if(ctx->opAggregateExpr()->getText() == "sum"){
@@ -125,10 +129,6 @@ public:
             else { //Length
                 result = IntValue::Create(elements.size());
             }
-        }
-        else if(ctx->opAggregateExpr()->getText() == "sizeof") {
-            const int size = list->getSymbolVector().size();
-            result = IntValue::Create(size);
         }
         else{
             throw CSP2SATInvalidExpressionTypeException(
@@ -373,7 +373,16 @@ public:
             this->currentScope = this->currentLocalScope;
             ValueRef index = visit(ctx->index);
             this->currentScope = prev;
-            return this->currentScope->resolve(std::to_string(index->getRealValue()));
+            try {
+                return this->currentScope->resolve(std::to_string(index->getRealValue()));
+            } catch (CSP2SATOutOfRangeException e) {
+                e.setLocation({
+                    st->parsedFiles.front()->getPath(),
+                    ctx->start->getLine(),
+                    ctx->start->getCharPositionInLine()
+                });
+                throw e;
+            }
         }
         return nullptr;
     }

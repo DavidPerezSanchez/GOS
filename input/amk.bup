@@ -1,0 +1,53 @@
+viewpoint:
+    var bool x[10];
+    param int q[10];
+    param int k;
+
+predicates:
+amk(var bool x[], param int q[], param int k) {
+    var bool s[sizeof(x)+1][k];
+
+	// init
+	forall(j in 0..k-1) {
+		!s[0][j];
+	};
+
+	forall(i in 1..sizeof(s)-1, j in 0..k-1) {
+		s[i-1][j] -> s[i][j];
+	};
+
+	forall(i in 1..sizeof(s)-1, j in 0..q[i-1]-1) {
+		x[i-1] -> s[i][j];
+	};
+
+	forall(i in 1..sizeof(s)-1) { // Totes les q son > 0 i <= k
+	    //if(q[i-1] < k){
+            forall(j in 0..k-1-q[i-1]){
+		        (s[i-1][j] & x[i-1]) -> s[i][j+q[i-1]];
+            };
+	    //}; // TODO rangs buits que no s'iterin (error)
+	};
+
+	forall(i in 1..sizeof(x)) {
+		s[i-1][k-q[i-1]] -> !x[i-1];
+	};
+}
+
+constraints:
+    amk(x, q, k);
+
+	forall(i in 0..sizeof(x)-1) {
+	    x[i] @i+1;
+	};
+
+    !x[0];
+    x[1];
+    x[2];
+    //x[3];
+    //ALK(x,2);
+
+output:
+    [ x[i] ++ " " | i in 0..sizeof(x)-1];
+    //[ s[i][j] ++ " " ++ (j == (sizeof(s[i])-1) ? "\n" : "") | i in 0..sizeof(s)-1, j in 0..sizeof(s[i])-1];
+
+    // TODO missatge d'error si un solver custom no printa model

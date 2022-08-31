@@ -132,12 +132,6 @@ predCallParam:
 predVarDefinitionBlock: (varDefinition TK_SEMICOLON)*;
 predInclude: TK_INCLUDE TK_STRING TK_SEMICOLON;
 
-
-// TODO permetre passar de tot com a parametre
-// TODO soft constraints permetre pesos amb notació @ {expressió que es resolgui en temps de compilació}
-
-
-
 constraintDefinitionBlock: TK_CONSTRAINTS TK_COLON constraintDefinition*;
 
 outputBlock: TK_OUTPUT TK_COLON (string TK_SEMICOLON)*;
@@ -216,6 +210,7 @@ listResultExpr:
 weight: TK_WEIGHT expr;
 constraint:
     constraint_expression weight?
+    | predCall
     | constraint_aggreggate_op;
 
 constraint_expression: constraint_double_implication;
@@ -244,7 +239,6 @@ constraint_literal: TK_CONSTRAINT_NOT? constraint_base;
 
 constraint_base:
     varAccess
-    | predCall
     | TK_BOOLEAN_VALUE
     | TK_LPAREN constraint_expression TK_RPAREN;
 

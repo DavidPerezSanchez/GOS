@@ -121,7 +121,7 @@ public:
                 bool val = lit.sign ? model[lit.v.id] : !model[lit.v.id];
                 isSat = isSat || val;
             }
-            if(isSat)
+            if(!isSat)
                 objective += weights[i];
         }
 

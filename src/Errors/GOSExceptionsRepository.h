@@ -109,6 +109,10 @@ public:
                     location,
                     "\"" + expr + "\" access out of range"
             ) {}
+    CSP2SATOutOfRangeException(std::string expr) :
+            GOSException(
+                    "\"" + expr + "\" access out of range"
+            ) {}
 };
 
 class CSP2SATTypeNotMatchException : public GOSException {

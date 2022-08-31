@@ -38,13 +38,13 @@ std::string DimacsFileEncoder::getCall() const{
         else if(solver == "yices-sat")
 			return solverpath + " -m " + getTMPFileName() + " | tail -n 2";
         else
-            return solverpath + " " + getTMPFileName() + " | grep -E '(^s )|(^v )'";
+            return solverpath + " " + getTMPFileName() + " | grep -E '(^S )|(^s )|(^v )'";
 	}
 	else {
         if(solver == "glucose") //Apanyu momentani
 		    return solverpath + " " + getTMPFileName() + " | grep -E '(^s )|(^c CPU time)' | cut -d ':' -f 2 | sed -e 's/s//g'";
         else
-            return solverpath + " " + getTMPFileName() + " | grep -E '(^s )|(^v )'";
+            return solverpath + " " + getTMPFileName() + " | grep -E '(^S )|(^s )|(^v )'";
     }
 }
 

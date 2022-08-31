@@ -81,6 +81,13 @@ predicates:
         true;
     }
 
+    truePred() {
+        true @2;
+    }
+
+    pred(var x[], param int y) {
+        true;
+    }
 
 constraints:
     //varboolpred2(a,b);
@@ -91,7 +98,7 @@ constraints:
     //!b | c;
     //unsatCore(a) | true; // TODO not working and won't work
     //(!a & a) | true;
-    //unsatCore2();
+    truePred();
     //recursive(a, 4);
     //A(a, true);
     //pred(true, n);
@@ -99,10 +106,10 @@ constraints:
     //predInclude2(a);
     //pred(varArray2);
     //true;
-    a | b @2;
-    !a @1;
-    !b @3;
-
+    //a | b @2;
+    //!a @1;
+    //!b @3;
+    pred(varArray, n);
 
 output:
     "sizeof(varArray)= " ++ sizeof(varArray);

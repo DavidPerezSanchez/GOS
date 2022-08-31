@@ -64,9 +64,12 @@ public:
         }
         const std::string toString() {
             std::string res = name + "(";
-            for (int i = 0; i < params.size()-1; i++)
-                res += params[i]->toString() + ", ";
-            res += params[params.size()-1]->toString() + ")";
+            if (params.size() > 0) {
+                for (int i = 0; i < params.size() - 1; i++)
+                    res += params[i]->toString() + ", ";
+                res += params[params.size() - 1]->toString();
+            }
+            res += ")";
             return res;
         }
 
@@ -86,10 +89,6 @@ public:
     static PredSymbolRef Create(Signature sig, Location loc, BUPParser::PredDefContext* predDefTree)
     {
         return PredSymbolRef(new PredSymbol(sig, loc, predDefTree));
-    }
-
-    std::vector<clause> getClauses() const {
-        return _clauses;
     }
 
     std::string getNameExt() const
@@ -125,7 +124,6 @@ protected:
 private:
     Location _loc;
     Signature _signature;
-    std::vector<clause> _clauses;
     BUPParser::PredDefContext* _predDefTree;
 };
 

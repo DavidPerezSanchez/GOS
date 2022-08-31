@@ -65,14 +65,25 @@ public:
 
         if(weight->isBoolean()) {
             throw CSP2SATInvalidExpressionTypeException(
-                    {
-                            st->parsedFiles.front()->getPath(),
-                            ctx->start->getLine(),
-                            ctx->start->getCharPositionInLine()
-                    },
-                    ctx->expr()->getText(),
-                    VisitorsUtils::getTypeName(SymbolTable::tBool),
-                    VisitorsUtils::getTypeName(SymbolTable::tInt)
+                {
+                        st->parsedFiles.front()->getPath(),
+                        ctx->start->getLine(),
+                        ctx->start->getCharPositionInLine()
+                },
+                ctx->expr()->getText(),
+                VisitorsUtils::getTypeName(SymbolTable::tBool),
+                VisitorsUtils::getTypeName(SymbolTable::tInt)
+            );
+        }
+        else if(weight->getRealValue() < 1) {
+            throw CSP2SATInvalidFormulaException(
+                {
+                    st->parsedFiles.front()->getPath(),
+                    ctx->start->getLine(),
+                    ctx->start->getCharPositionInLine()
+                },
+                ctx->getText(),
+                "Weights must be >= 1"
             );
         }
 
@@ -101,6 +112,8 @@ public:
                 for (clause clause : result->clauses)
                     this->_f->addClause(clause);
             }
+        } else if (ctx->predCall()) {
+            visit(ctx->predCall());
         } else visit(ctx->constraint_aggreggate_op());
         return nullptr;
     }
@@ -121,8 +134,6 @@ public:
                     ctx->getText()
                 );
             }
-        } else if (ctx->predCall()) {
-            visit(ctx->predCall());
         } else if (ctx->TK_BOOLEAN_VALUE()) {
             if (ctx->TK_BOOLEAN_VALUE()->getText() == "true")
                 clause->addClause(this->_f->trueVar());
@@ -531,7 +542,7 @@ public:
         PredSymbol::Signature signature;
         signature.name = ctx->name->getText();
         if (ctx->predCallParams()) {
-            this->accessingNotLeafVariable = true; // TODO ask Mateu if this is correct
+            this->accessingNotLeafVariable = true;
             // Evaluate all parameters from call
             for (auto predCallParamCtx: ctx->predCallParams()->predCallParam()) {
                 SymbolRef sym;
@@ -646,7 +657,7 @@ public:
     }
 
     antlrcpp::Any visitPredCallParams(BUPParser::PredCallParamsContext *ctx) override {
-        return visitChildren(ctx);
+        return BUPBaseVisitor::visitPredCallParams(ctx);
     }
 
     antlrcpp::Any visitPredCallParam(BUPParser::PredCallParamContext *ctx) override {
