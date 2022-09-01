@@ -52,7 +52,15 @@ public:
 
     antlrcpp::Any visitConstraintDefinition(BUPParser::ConstraintDefinitionContext *ctx) override {
         try {
-            BUPBaseVisitor::visitConstraintDefinition(ctx);
+            if (ctx->DIMACS_LINE_COMMENT()) {
+                std::string text = ctx->DIMACS_LINE_COMMENT()->getText();
+                text = text.substr(4, text.length()-2);
+                clause c = clause(text);
+                this->_f->addClause(c);
+            }
+            else {
+                BUPBaseVisitor::visitConstraintDefinition(ctx);
+            }
         }
         catch (GOSException &e) {
             throw e;
@@ -623,7 +631,7 @@ public:
         return nullptr;
     }
 
-    antlrcpp::Any visitVarDefinition(BUPParser::VarDefinitionContext *ctx) override { // TODO copied from TypeVarDefinitionVisitor
+    antlrcpp::Any visitVarDefinition(BUPParser::VarDefinitionContext *ctx) override {
         BUPBaseVisitor::visitVarDefinition(ctx);
         SymbolRef newVar;
         std::string name = ctx->name->getText();
@@ -651,6 +659,7 @@ public:
             newVar = VariableSymbol::Create(ctx->name->getText(), this->_f);
         }
         currentScope->define(newVar);
+        this->_f->addClause(clause(this->currentScope->getFullName() + "  " + name + "-> " + newVar->toString()));
 
         return nullptr;
 

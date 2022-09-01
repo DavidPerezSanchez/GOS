@@ -500,28 +500,30 @@ public:
         int minValue = minRange->getRealValue();
         int maxValue = maxRange->getRealValue();
 
+        ArraySymbolRef result = ArraySymbol::Create(
+                "auxRangList",
+                this->currentScope,
+                SymbolTable::_integer
+        );
         if (minValue <= maxValue) {
-            ArraySymbolRef result = ArraySymbol::Create(
-                    "auxRangList",
-                    this->currentScope,
-                    SymbolTable::_integer
-            );
             for (int i = 0; i <= (maxValue - minValue); i++) {
                 AssignableSymbolRef newValue = AssignableSymbol::Create(std::to_string(i), SymbolTable::_integer);
                 newValue->setValue(IntValue::Create(minValue + i));
                 result->add(newValue);
             }
-            return result;
         } else {
-            throw GOSException(
+            GOSWarning warning = GOSWarning(
                 {
                     st->parsedFiles.front()->getPath(),
-                    ctx->start->getLine(),
-                    ctx->start->getCharPositionInLine(),
+                    ctx->min->start->getLine(),
+                    ctx->min->start->getCharPositionInLine(),
                 },
-                "Range must be ascendant"
+                "Descendant range \"" + ctx->getText() + "\" detected (" +
+                    std::to_string(minValue) + ".." + std::to_string(maxValue) + "), loop omitted"
             );
+            std::cerr << warning.getErrorMessage() << std::endl;
         }
+        return result;
     }
 
     antlrcpp::Any visitAuxiliarListAssignation(BUPParser::AuxiliarListAssignationContext *ctx) override {

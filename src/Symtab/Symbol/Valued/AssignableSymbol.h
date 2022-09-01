@@ -30,6 +30,13 @@ public:
         this->val = value;
     }
 
+    std::string toString() const override {
+        if (val->isBoolean())
+            return val->getRealValue() == 0 ? "false" : "true";
+        else
+            return std::to_string(val->getRealValue());
+    }
+
 protected:
     AssignableSymbol(const std::string &name, TypeRef type) : ValueSymbol(name, type) {
         this->val = nullptr;

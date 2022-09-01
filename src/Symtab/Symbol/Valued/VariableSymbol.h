@@ -6,6 +6,8 @@
 #define CSP2SAT_VARIABLESYMBOL_H
 
 #include "ValueSymbol.h"
+#include "../../../api/smtformula.h"
+#include "../../SymbolTable.h"
 #include <string>
 
 namespace GOS {
@@ -38,10 +40,15 @@ public:
         VariableSymbol::modelValue = modelValue;
     }
 
+    std::string toString() const override {
+        return std::to_string(var.v.id);
+    }
+
 protected:
     VariableSymbol(const std::string &name, SMTFormula *f) : ValueSymbol(name, SymbolTable::_varbool) {
-        if(!SymbolTable::entityDefinitionBlock)
+        if(!SymbolTable::entityDefinitionBlock) {
             var = f->newBoolVar();
+        }
     }
 
     VariableSymbol(const std::string &name, literal lit) : ValueSymbol(name, SymbolTable::_varbool) {

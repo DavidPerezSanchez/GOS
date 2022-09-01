@@ -4,6 +4,7 @@ WS
    : [ \t\n\r] + -> skip
    ;
 
+DIMACS_LINE_COMMENT : '//c ' ~[\r\n]*;
 LINE_COMMENT : '//' ~[\r\n]* -> skip;
 
 BLOCK_COMMENT : '/*' .*? '*/' -> skip;
@@ -182,7 +183,9 @@ valueBaseType: integer=TK_INT_VALUE | boolean=TK_BOOLEAN_VALUE;
 
 // CONSTRAINTS
 
-constraintDefinition: ( forall | ifThenElse | constraint ) TK_SEMICOLON;
+constraintDefinition:
+    ( forall | ifThenElse | constraint ) TK_SEMICOLON
+    | DIMACS_LINE_COMMENT;
 
 auxiliarListAssignation: name=TK_IDENT TK_IN list;
 

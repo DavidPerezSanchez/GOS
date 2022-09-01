@@ -81,6 +81,7 @@ public:
         } else {
             newVar = VariableSymbol::Create(ctx->name->getText(), this->_f);
         }
+        this->_f->addClause(clause(name + "-> " + newVar->toString()));
         currentScope->define(newVar);
 
         return nullptr;
@@ -151,6 +152,7 @@ public:
             }
             newConst = element;
         }
+        this->_f->addClause(clause(name + "-> " + newConst->toString()));
         currentScope->define(newConst);
         return nullptr;
     }

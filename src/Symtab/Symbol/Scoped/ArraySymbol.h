@@ -91,6 +91,18 @@ public:
         size++;
     }
 
+    std::string toString() const override {
+        std::string res;
+        res += "[";
+        for (int i = 0; i < elements.size() - 1; i++) {
+            res += elements[i]->toString();
+            if (i < elements.size() - 2)
+                res += ",";
+        }
+        res += "]";
+        return res;
+    }
+
 protected:
     ArraySymbol(const std::string &name, ScopeRef enclosingScope, TypeRef arrayElementsType, int size, int nDimensions) :
         ScopedSymbol(SymbolTable::tArray, name, enclosingScope)

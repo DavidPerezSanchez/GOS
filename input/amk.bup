@@ -2,24 +2,28 @@ viewpoint:
     var bool x[10];
     param int q[10];
     param int k;
+    var bool test[10][10];
 
 predicates:
 amk(var bool x[], param int q[], param int k) {
     var bool s[sizeof(x)+1][k];
 
-	// init
+	//c init
 	forall(j in 0..k-1) {
 		!s[0][j];
 	};
 
+    //c clausules 1r constraint
 	forall(i in 1..sizeof(s)-1, j in 0..k-1) {
 		s[i-1][j] -> s[i][j];
 	};
 
+    //c clausules 2n constraint
 	forall(i in 1..sizeof(s)-1, j in 0..q[i-1]-1) {
 		x[i-1] -> s[i][j];
 	};
 
+    //c clausules 3r constraint
 	forall(i in 1..sizeof(s)-1) { // Totes les q son > 0 i <= k
 	    //if(q[i-1] < k){
             forall(j in 0..k-1-q[i-1]){
@@ -28,6 +32,7 @@ amk(var bool x[], param int q[], param int k) {
 	    //}; // TODO rangs buits que no s'iterin (error)
 	};
 
+    //c clausules 4t constraint
 	forall(i in 1..sizeof(x)) {
 		s[i-1][k-q[i-1]] -> !x[i-1];
 	};

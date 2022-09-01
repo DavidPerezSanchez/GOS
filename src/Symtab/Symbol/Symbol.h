@@ -40,9 +40,14 @@ public:
 
     virtual bool isAssignable() {
         return false;
-    };
+    }
+
     virtual bool isScoped() {
         return false;
+    }
+
+    virtual std::string toString() const {
+        return name;
     }
 
 protected:

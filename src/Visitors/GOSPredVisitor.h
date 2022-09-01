@@ -307,7 +307,15 @@ public:
             }
         }
         else {
-            std::cerr << "Warning: file " << filePath.filename() << " already included, parsing omitted" << std::endl;
+            GOSWarning warning = GOSWarning(
+                {
+                    st->parsedFiles.front()->getPath(),
+                    ctx->start->getLine(),
+                    ctx->start->getCharPositionInLine(),
+                },
+                "file \"" + filePath.filename().string() + "\" already included, parsing omitted"
+            );
+            std::cerr << warning.getErrorMessage() << std::endl;
         }
 
         return nullptr;
