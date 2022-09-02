@@ -10,17 +10,18 @@
 
 using namespace smtapi;
 
-DimacsFileEncoder::DimacsFileEncoder(Encoding * enc, const std::string & solver, const std::string &solverpath = "") :
-    FileEncoder(enc){
-	if(solver=="yices")
-		this->solver="yices-sat";
-	else
-        this->solver=solver;
+DimacsFileEncoder::DimacsFileEncoder(Encoding * enc, const std::string & solver, const std::string &solverpath = "", bool debug) :
+    FileEncoder(enc), debug(debug)
+{
+if(solver=="yices")
+    this->solver="yices-sat";
+else
+    this->solver=solver;
 
-    if (solverpath == "")
-        this->solverpath = "solvers/" + solver;
-    else
-        this->solverpath = solverpath;
+if (solverpath == "")
+    this->solverpath = "solvers/" + solver;
+else
+    this->solverpath = solverpath;
 }
 
 DimacsFileEncoder::~DimacsFileEncoder(){
@@ -219,20 +220,25 @@ void DimacsFileEncoder::createSATFile(std::ostream & os, SMTFormula * f) const{
 
 	os << "p cnf " << f->getNBoolVars() << " " << f->getNClauses() << std::endl;
 	for(const clause & c : f->getClauses()){
-		for(const literal & l : c.v){
-			if(l.arith){
-				std::cerr << "Error: attempted to add arithmetic literal to SAT encodign"<< std::endl;
-				exit(BADCODIFICATION_ERROR);
-			}
+        if (debug && c.comment != "") {
+            os << "c " << c.comment << std::endl;
+        }
+        else {
+            for (const literal &l: c.v) {
+                if (l.arith) {
+                    std::cerr << "Error: attempted to add arithmetic literal to SAT encoding" << std::endl;
+                    exit(BADCODIFICATION_ERROR);
+                }
 
-			if(l.v.id <= 0 || l.v.id>f->getNBoolVars()){
-				std::cerr << "Error: asserted undefined Boolean variable"<< std::endl;
-				exit(UNDEFINEDVARIABLE_ERROR);
-			}
+                if (l.v.id <= 0 || l.v.id > f->getNBoolVars()) {
+                    std::cerr << "Error: asserted undefined Boolean variable" << std::endl;
+                    exit(UNDEFINEDVARIABLE_ERROR);
+                }
 
-			os << (l.sign ? l.v.id : -l.v.id) << " ";
-		}
-		os << "0" << std::endl;
+                os << (l.sign ? l.v.id : -l.v.id) << " ";
+            }
+            os << "0" << std::endl;
+        }
 	}
 }
 
@@ -246,7 +252,7 @@ void DimacsFileEncoder::createMaxSATFile(std::ostream & os, SMTFormula * f) cons
 	int whard = f->getHardWeight();
 	os << "p wcnf " << f->getNBoolVars() << " " << f->getNClauses() + f->getNSoftClauses() << " " << whard << std::endl;
 	for(const clause & c : f->getClauses()){
-        if (c.comment != "") {
+        if (debug && c.comment != "") {
             os << "c " << c.comment << std::endl;
         }
         else {

@@ -52,7 +52,8 @@ enum SolvingArg {
     
     TRACE_SAT,
     ENABLE_RESTARTS,
-    PHASE_SAVING
+    PHASE_SAVING,
+    DEBUG_DIMACS
 };
 
 
