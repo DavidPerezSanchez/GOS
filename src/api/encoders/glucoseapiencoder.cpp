@@ -76,13 +76,15 @@ bool GlucoseAPIEncoder::assertAndCheck(int lb, int ub, std::vector<literal> * as
 	//Add the new clauses
 	for(int i = lastClause+1; i < workingFormula.f->getNClauses(); i++){
 		const clause & c = workingFormula.f->getClauses()[i];
-		vec<Lit> cv;
-		for(const literal & l : c.v)
-			cv.push(getLiteral(l,vars));
-		if(!s->addClause(cv)){
-			consistent = false;
-			break;
-		}
+        if (c.comment == "") {
+            vec<Lit> cv;
+            for (const literal &l: c.v)
+                cv.push(getLiteral(l, vars));
+            if (!s->addClause(cv)) {
+                consistent = false;
+                break;
+            }
+        }
 	}
     consistent &= s->simplify();
 
