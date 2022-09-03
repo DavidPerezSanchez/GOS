@@ -659,7 +659,7 @@ public:
             newVar = VariableSymbol::Create(ctx->name->getText(), this->_f);
         }
         currentScope->define(newVar);
-        this->_f->addClause(clause(this->currentScope->getFullName() + "  " + name + "-> " + newVar->toString()));
+        this->_f->addClause(clause("local var " + name + "-> " + newVar->toString()));
 
         return nullptr;
 

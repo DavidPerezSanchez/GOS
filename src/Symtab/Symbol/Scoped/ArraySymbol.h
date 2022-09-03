@@ -94,9 +94,9 @@ public:
     std::string toString() const override {
         std::string res;
         res += "[";
-        for (int i = 0; i < elements.size() - 1; i++) {
+        for (int i = 0; i < elements.size(); i++) {
             res += elements[i]->toString();
-            if (i < elements.size() - 2)
+            if (i < elements.size()-1)
                 res += ",";
         }
         res += "]";

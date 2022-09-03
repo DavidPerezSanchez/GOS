@@ -6,7 +6,6 @@ WS
 
 DIMACS_LINE_COMMENT : '//c ' ~[\r\n]*;
 LINE_COMMENT : '//' ~[\r\n]* -> skip;
-
 BLOCK_COMMENT : '/*' .*? '*/' -> skip;
 
 // basic structure
@@ -64,6 +63,8 @@ TK_OP_AGG_SUM: 'sum';
 TK_OP_AGG_LENGTH: 'length';
 TK_OP_AGG_MAX: 'max';
 TK_OP_AGG_MIN: 'min';
+TK_OP_AGG_OR: 'lor';
+TK_OP_AGG_AND: 'land';
 
 TK_OP_LOGIC_NOT: 'not';
 TK_OP_LOGIC_AND: 'and';
@@ -147,13 +148,15 @@ arrayDefinition: (TK_LCLAUDATOR arraySize=expr? TK_RCLAUDATOR)*;
 
 // EXPRESSIONS
 
-expr: condition=exprAnd (TK_INTERROGANT op1=expr TK_COLON op2=expr)?; // Ternary
+expr: condition=exprOr (TK_INTERROGANT op1=expr TK_COLON op2=expr)?; // Ternary
 
-opAggregateExpr: TK_OP_AGG_LENGTH | TK_OP_AGG_MAX | TK_OP_AGG_MIN | TK_OP_AGG_SUM | TK_OP_AGG_SIZEOF;
+opAggregateExpr:
+    TK_OP_AGG_LENGTH | TK_OP_AGG_MAX | TK_OP_AGG_MIN | TK_OP_AGG_SUM
+    | TK_OP_AGG_SIZEOF | TK_OP_AGG_OR | TK_OP_AGG_AND;
 exprListAgg: opAggregateExpr TK_LPAREN list TK_RPAREN;
 
-exprAnd: exprOr (TK_OP_LOGIC_AND exprOr)*;
-exprOr: exprEq (TK_OP_LOGIC_OR exprEq)*;
+exprOr: exprAnd (TK_OP_LOGIC_OR exprAnd)*;
+exprAnd: exprEq (TK_OP_LOGIC_AND exprEq)*;
 
 opEquality: TK_OP_REL_EQ | TK_OP_REL_NEQ;
 exprEq: exprRel (opEquality exprRel)*;

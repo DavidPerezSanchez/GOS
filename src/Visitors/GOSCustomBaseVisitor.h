@@ -99,6 +99,26 @@ public:
             const int size = list->getSymbolVector().size();
             result = IntValue::Create(size);
         }
+        else if (list->getElementsType()->getTypeIndex() == SymbolTable::tBool) {
+            std::vector<SymbolRef> elements = list->getSymbolVector();
+            if(ctx->opAggregateExpr()->getText() == "land"){
+                bool res = true;
+                for(auto & element : elements) {
+                    const int val = Utils::as<AssignableSymbol>(element)->getValue()->getRealValue();
+                    res &= (val == 0 ? false : true);
+                }
+                result = BoolValue::Create(res);
+            }
+            else if (ctx->opAggregateExpr()->getText() == "lor") {
+                bool res = false;
+                for(auto & element : elements) {
+                    const int val = Utils::as<AssignableSymbol>(element)->getValue()->getRealValue();
+                    res |= (val == 0 ? false : true);
+                }
+                result = BoolValue::Create(res);
+            }
+            else throw std::invalid_argument("Aggregate operator not supported");
+        }
         else if(list->getElementsType()->getTypeIndex() == SymbolTable::tInt){
             std::vector<SymbolRef> elements = list->getSymbolVector();
 
@@ -147,26 +167,13 @@ public:
     }
 
     antlrcpp::Any visitExprAnd(BUPParser::ExprAndContext *ctx) override {
-        ValueRef result = visit(ctx->exprOr(0));
-        if (ctx->exprOr().size() > 1) {
-            ValueRef res = BoolValue::Create(true);
-            for (int i = 0; i < ctx->exprOr().size(); i++) {
-                ValueRef currValue = visit(ctx->exprOr(i));
-                res->setRealValue(res->getRealValue() && currValue->getRealValue());
-            }
-            return res;
-        }
-        return result;
-    }
-
-    antlrcpp::Any visitExprOr(BUPParser::ExprOrContext *ctx) override {
         ValueRef result = visit(ctx->exprEq(0));
         if (ctx->exprEq().size() > 1) {
-            ValueRef res = BoolValue::Create(false);
+            ValueRef res = BoolValue::Create(true);
             for (int i = 0; i < ctx->exprEq().size(); i++) {
                 ValueRef currValue = visit(ctx->exprEq(i));
                 if (currValue->isBoolean())
-                    res->setRealValue(res->getRealValue() || currValue->getRealValue());
+                    res->setRealValue(res->getRealValue() && currValue->getRealValue());
                 else {
                     throw CSP2SATInvalidExpressionTypeException(
                         {
@@ -179,6 +186,19 @@ public:
                         VisitorsUtils::getTypeName(SymbolTable::tBool)
                     );
                 }
+            }
+            return res;
+        }
+        return result;
+    }
+
+    antlrcpp::Any visitExprOr(BUPParser::ExprOrContext *ctx) override {
+        ValueRef result = visit(ctx->exprAnd(0));
+        if (ctx->exprAnd().size() > 1) {
+            ValueRef res = BoolValue::Create(false);
+            for (int i = 0; i < ctx->exprAnd().size(); i++) {
+                ValueRef currValue = visit(ctx->exprAnd(i));
+                res->setRealValue(res->getRealValue() || currValue->getRealValue());
             }
             return res;
         }
@@ -321,7 +341,7 @@ public:
     }
 
     antlrcpp::Any visitExprNot(BUPParser::ExprNotContext *ctx) override {
-        ValueRef result = visit(ctx->expr_base()); // TODO safe cast?
+        ValueRef result = visit(ctx->expr_base());
         if (ctx->op) {
             if (result->isBoolean()) {
                 result = BoolValue::Create(!result->getRealValue());

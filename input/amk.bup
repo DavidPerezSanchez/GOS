@@ -2,7 +2,6 @@ viewpoint:
     var bool x[10];
     param int q[10];
     param int k;
-    var bool test[10][10];
 
 predicates:
 amk(var bool x[], param int q[], param int k) {
@@ -29,7 +28,7 @@ amk(var bool x[], param int q[], param int k) {
             forall(j in 0..k-1-q[i-1]){
 		        (s[i-1][j] & x[i-1]) -> s[i][j+q[i-1]];
             };
-	    //}; // TODO rangs buits que no s'iterin (error)
+	    //};
 	};
 
     //c clausules 4t constraint
@@ -45,6 +44,8 @@ constraints:
 	    x[i] @i+1;
 	};
 
+    amk(x, q, 12);
+
     !x[0];
     x[1];
     x[2];
@@ -54,5 +55,3 @@ constraints:
 output:
     [ x[i] ++ " " | i in 0..sizeof(x)-1];
     //[ s[i][j] ++ " " ++ (j == (sizeof(s[i])-1) ? "\n" : "") | i in 0..sizeof(s)-1, j in 0..sizeof(s[i])-1];
-
-    // TODO missatge d'error si un solver custom no printa model

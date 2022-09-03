@@ -34,10 +34,8 @@ std::string DimacsFileEncoder::getCall() const{
             return solverpath + " " + getTMPFileName() + " | grep -E '(^s )|(^v )'";
 		else if(solver == "glucose")
 			return solverpath + " -model " + getTMPFileName() + " | grep -E '(^s )|(^v )'";
-        //else if(solver == "minisat")
-        //    return "TMPDIR=$(mktemp -p .) && " + solverpath + " -verb=0 " + getTMPFileName() + " \"$TMPDIR\" | echo \"s `head -n1 $TMPDIR`\" && echo \"v `tail -n1 $TMPDIR`\" | echo ; rm \"$TMPDIR\"";
-        else if(solver == "yices-sat")
-			return solverpath + " -m " + getTMPFileName() + " | tail -n 2";
+        else if(solver == "minisat")
+            throw std::invalid_argument("MiniSat solver without API not supported");
         else
             return solverpath + " " + getTMPFileName() + " | grep -E '(^S )|(^s )|(^v )'";
 	}
@@ -223,7 +221,7 @@ void DimacsFileEncoder::createSATFile(std::ostream & os, SMTFormula * f) const{
         if (debug && c.comment != "") {
             os << "c " << c.comment << std::endl;
         }
-        else {
+        else if (!c.v.empty()) {
             for (const literal &l: c.v) {
                 if (l.arith) {
                     std::cerr << "Error: attempted to add arithmetic literal to SAT encoding" << std::endl;
@@ -255,7 +253,7 @@ void DimacsFileEncoder::createMaxSATFile(std::ostream & os, SMTFormula * f) cons
         if (debug && c.comment != "") {
             os << "c " << c.comment << std::endl;
         }
-        else {
+        else if (!c.v.empty()){
             os << whard << " ";
             for (const literal &l: c.v) {
                 if (l.arith) {

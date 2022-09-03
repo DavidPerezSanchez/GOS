@@ -101,11 +101,10 @@ SolvingArguments::SolvingArguments() : Arguments<SolvingArg>(
 	0,
 
 	//Program solving options
-	{arguments::sop("s","solver",SOLVER,"yices",
-	{"yices","lingeling","openwbo","glucose","optimathsat","minisat","custom"},
-	"Solver to use. API only available with yices and glucose. For SMT encodings, only yices. For MaxSAT encodings, only openwbo. For SAT: glucose, minisat. Default: yices."),
+	{arguments::sop("s","solver",SOLVER,"glucose",
+	{"openwbo","glucose","minisat","custom"},
+	"Solver to use. API only available with minisat and glucose. Without API, only available glucose, openwbo and custom. For MaxSAT: openwbo. For SAT: glucose, minisat. Default: glucose."),
 
-     //Program solving options
      arguments::sop("c","solver-command",SOLVERCOMMAND,"",
      "Command to execute the custom solver. It must print the whole solver standard output (including model). Only when -s=custom."),
 
