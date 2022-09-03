@@ -1,0 +1,82 @@
+viewpoint:
+    var v;
+    var vArray[10];
+    var vMatrix[10][10];
+    param int i;
+    param int iArray[4];
+    param int iMatrix[3][4];
+    param bool b;
+    param bool bArray[3];
+    param bool bMatrix[3][3];
+
+predicates:
+    predVar(var vp, var vArrayp[], var vMatrixp[][]) {
+        true;
+    }
+
+    predInt(param int ip, param int iArrayp[], param int iMatrixp[][]) {
+        true;
+    }
+
+    predParamBool(param bool bp, param bool bArrayp[], param bool bMatrixp[][]) {
+        true;
+    }
+
+    predRecursive(var vArrayp[], param int j) {
+        vArrayp[j-1];
+        if (j-1 > 0) {
+            predRecursive(vArrayp, j-1);
+        };
+    }
+
+    crossRefA(var vArrayp[], param int j) {
+        vArrayp[j-1];
+        if (j-1 > 0) {
+            crossRefB(vArrayp, j-1);
+        };
+    }
+
+    crossRefB(var vArrayp[], param int j) {
+        vArrayp[j-1];
+        if (j-1 > 0) {
+            crossRefA(vArrayp, j-1);
+        };
+    }
+
+    predSizeof(var vArrayp[], param int j) {
+        forall(k in sizeof(vArrayp)-j..sizeof(vArrayp)-1) {
+            vArrayp[k];
+        };
+    }
+
+    predOverload(var x, param int y) {
+        true;
+    }
+
+    predOverload(var x, param int y, var bool z[]) {
+        false;
+    }
+
+    include "./include.bup";
+    include "./include2.bup";
+
+constraints:
+    //predVar(v, vArray, vMatrix);
+    //predInt(i, iArray, iMatrix);
+    //predParamBool(b, bArray, bMatrix);
+    //predRecursive(vArray, 3);
+    //crossRefA(vArray, 6);
+    //predSizeof(vArray, 4);
+    //predOverload(v, i, vArray);
+    //predOverload(v, i);
+    //predOverload(true);
+    predInclude(v);
+    predInclude2(v);
+
+output:
+    //[ vArray[j] ++ j < 9 ? ", " : "" | j in 0..9]; // Output recursive
+    //"sizeof(vArray) = " ++ sizeof(vArray); // Output sizeof
+    //"sizeof(iArray) = " ++ sizeof(iArray); // Output sizeof
+    //"sizeof(bArray) = " ++ sizeof(bArray); // Output sizeof
+    //"sizeof(iMatrix[0]) = " ++ sizeof(iMatrix[0]); // Output sizeof
+    //"sizeof(v) = " ++ sizeof(v); // Errors

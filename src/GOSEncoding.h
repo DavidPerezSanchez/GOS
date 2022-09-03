@@ -51,7 +51,7 @@ private:
         std::map<std::string, SymbolRef> currentScopeSymbols = currentScope->getScopeSymbols();
 
         for(std::pair<std::string, SymbolRef> sym : currentScopeSymbols){
-            if(sym.second->getType()){
+            if(sym.second->getType() && !Utils::is<PredSymbol>(sym.second)){
                 if(sym.second->getType()->getTypeIndex() == SymbolTable::tCustom || sym.second->getType()->getTypeIndex() == SymbolTable::tArray) {
                     if (!isdigit(sym.first[0]))
                         printModelSolution(Utils::as<ScopedSymbol>(sym.second), os, prefix + "." + sym.first);
