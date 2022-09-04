@@ -125,9 +125,9 @@ bool MinisatAPIEncoder::assertAndCheck(int lb, int ub, std::vector<literal> * as
 			consistent = false;
 			break;
 		}
-		consistent = s->simplify();
 	}
-	lastVar = workingFormula.f->getNBoolVars();
+    consistent &= s->simplify();
+    lastVar = workingFormula.f->getNBoolVars();
 	lastClause = workingFormula.f->getNClauses()-1;
 
 
@@ -198,4 +198,7 @@ Lit MinisatAPIEncoder::getLiteral(const literal & l, const std::vector<Var> & va
 }
 
 
+std::string MinisatAPIEncoder::getSolver() const {
+	return "minisat";
+}
 

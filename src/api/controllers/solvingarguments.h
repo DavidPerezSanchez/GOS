@@ -30,6 +30,7 @@ enum SolvingArg {
 	FILE_FORMAT,
 	PRODUCE_MODELS,
 	SOLVER,
+    SOLVERCOMMAND,
 	OPTIMIZER,
 	RANDOM_SEED,
 	FILE_PREFIX,
@@ -222,6 +223,21 @@ SolvingArguments * SolvingArguments::readArguments(int argc, char ** argv, Argum
 		std::cerr << "Run \"" << argv[0] << " -h\" for help" << std::endl;
 		exit(BADARGUMENTS_ERROR);
 	}
+
+    if(sargs->getStringOption(SOLVER) == "custom" && sargs->getBoolOption(USE_API)) {
+        std::cerr << "Incompatible options found: Custom solver (-s=custom) cannot use api (-a=1) " << std::endl << std::endl;
+        std::cerr << "Run \"" << argv[0] << " -h\" for help" << std::endl;
+        exit(BADARGUMENTS_ERROR);
+    }
+
+    if(sargs->getStringOption(SOLVER) == "custom" && sargs->getStringOption(SOLVERCOMMAND) == "") {
+        std::cerr << "Custom solver set (-s=custom) but no custom command found (-c unset)" << std::endl << std::endl;
+        std::cerr << "Run \"" << argv[0] << " -h\" for help" << std::endl;
+        exit(BADARGUMENTS_ERROR);
+    }
+    else if(sargs->getStringOption(SOLVER) != "custom" && sargs->getStringOption(SOLVERCOMMAND) != "") {
+        std::cerr << "Warning: No custom solver (-s != custom) set but custom command found (-c set). Custom command will be ignored." << std::endl << std::endl;
+    }
 
 	return sargs;
 }

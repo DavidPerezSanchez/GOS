@@ -33,8 +33,7 @@ public:
 
 	void setTmpFileName(const std::string & filename);
 
-
-
+	virtual std::string getSolver() const override;
 };
 
 #endif

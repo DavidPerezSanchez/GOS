@@ -50,7 +50,6 @@ public:
 	bool checkSAT(int lb, int ub);
 
 	bool optimize(int lb, int ub);
-
 };
 
 #endif

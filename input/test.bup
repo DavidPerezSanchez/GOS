@@ -12,7 +12,7 @@ viewpoint:
 predicates:
 
     pred(var bool predArray[][]) {
-        forall(i in 1..sizeof(predArray)-1){true;}; // TODO mirar pq sizeof no funciona
+        forall(i in 1..sizeof(predArray)-1){true;};
         true;
     }
 
@@ -81,6 +81,7 @@ predicates:
         true;
     }
 
+
 constraints:
     //varboolpred2(a,b);
     //pred(a, t, t);
@@ -96,8 +97,14 @@ constraints:
     //pred(true, n);
     //testArray(t);
     //predInclude2(a);
-    pred(varArray2);
-    true;
+    //pred(varArray2);
+    //true;
+    a | b @2;
+    !a @1;
+    !b @3;
+
 
 output:
-    "sizeof(varArray)= " ++ sizeof(varArray[1]);
+    "sizeof(varArray)= " ++ sizeof(varArray);
+    "a=" ++ a;
+    "b=" ++ b;

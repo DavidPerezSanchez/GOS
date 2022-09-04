@@ -14,7 +14,7 @@ int main(int argc, char **argv) {
     Arguments<ProgramArg> *pargs = new Arguments<ProgramArg>(
             {
                     arguments::arg("modelfile", "Instance file path."),
-                    arguments::arg("datafile", "Input params file path."),
+                    arguments::arg("datafile", "Input params file path.")
             },
             2,
             {
@@ -23,17 +23,12 @@ int main(int argc, char **argv) {
             "Solve CSP to SAT"
     );
 
-
     SolvingArguments *sargs = SolvingArguments::readArguments(argc, argv, pargs);
 
+    if (sargs->getStringOption(FILE_FORMAT) != "dimacs")
+        sargs->setOption(FILE_FORMAT, (std::string)"dimacs");
+
     bool showFormula = pargs->getBoolOption(SHOWFORMULA);
-
-    SolvingArg solver = sargs->getOptionRef("-s");
-    sargs->setOption(solver, (string) "minisat");
-
-    SolvingArg optimize = sargs->getOptionRef("-o");
-    sargs->setOption(optimize, (string) "check");
-
     if (showFormula) {
         SolvingArg print = sargs->getOptionRef("-e");
         sargs->setOption(print, true);

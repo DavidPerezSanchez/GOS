@@ -261,5 +261,3 @@ void SMTLIB2FileEncoder::pprod(SMTFormula * f, const intprod & p, std::ostream &
 			os << "(* (- " << -p.coef << ") " << ivn(f->getIntVarNames()[p.varid]) << ")";
 	}
 }
-
-

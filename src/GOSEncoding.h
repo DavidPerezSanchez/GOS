@@ -27,6 +27,7 @@ private:
     SMTFormula *f;
     SymbolTable *st;
     bool sat = false;
+    std::vector<bool> model;
 
     void fillModelValuesResult(ScopeRef currentScope, const EncodedFormula formula, const std::vector<bool> & bmodel) {
         std::map<std::string, SymbolRef> currentScopeSymbols = currentScope->getScopeSymbols();
@@ -104,7 +105,27 @@ public:
 
     void setModel(const EncodedFormula &ef, int lb, int ub, const std::vector<bool> &bmodel, const std::vector<int> &imodel) override {
         sat = true;
+        model = bmodel;
         fillModelValuesResult(this->st->gloabls, ef, bmodel);
+    }
+
+    int getObjective() const override {
+        const std::vector<int>& weights = f->getWeights();
+        const std::vector<clause>& softclauses = f->getSoftClauses();
+
+        int objective = 0;
+        for (int i = 0; i < softclauses.size(); i++) {
+            clause c = softclauses[i];
+            bool isSat = false;
+            for (auto lit : c.v) {
+                bool val = lit.sign ? model[lit.v.id] : !model[lit.v.id];
+                isSat = isSat || val;
+            }
+            if(isSat)
+                objective += weights[i];
+        }
+
+        return objective;
     }
 
     bool isSat(){

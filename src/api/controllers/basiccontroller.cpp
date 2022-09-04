@@ -65,6 +65,7 @@ void BasicController::run() {
 
 
 void BasicController::afterSatisfiabilityCall(int lb, int ub, Encoder * encoder){
+    std::cout << "c solver: " << encoder->getSolver() << std::endl;
 	std::cout << "c stats ";
 
 	//Bounds and time

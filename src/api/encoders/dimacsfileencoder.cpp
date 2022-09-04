@@ -10,15 +10,17 @@
 
 using namespace smtapi;
 
-DimacsFileEncoder::DimacsFileEncoder(Encoding * enc, const std::string & solver) : FileEncoder(enc){
+DimacsFileEncoder::DimacsFileEncoder(Encoding * enc, const std::string & solver, const std::string &solverpath = "") :
+    FileEncoder(enc){
 	if(solver=="yices")
 		this->solver="yices-sat";
-	else if(solver=="glucose")
-		this->solver="glucose_release";
-	else if(solver=="openwbo")
-		this->solver="open-wbo_release";
 	else
         this->solver=solver;
+
+    if (solverpath == "")
+        this->solverpath = "solvers/" + solver;
+    else
+        this->solverpath = solverpath;
 }
 
 DimacsFileEncoder::~DimacsFileEncoder(){
@@ -27,14 +29,23 @@ DimacsFileEncoder::~DimacsFileEncoder(){
 
 std::string DimacsFileEncoder::getCall() const{
 	if(produceModels()){
-		if(solver == "glucose_release")
-			return solver + " -model " + getTMPFileName() + " | grep -E '(^s )|(^v )'";
-		else if(solver == "yices-sat")
-			return solver + " -m " + getTMPFileName() + " | tail -n 2";
+        if(solver == "openwbo")
+            return solverpath + " " + getTMPFileName() + " | grep -E '(^s )|(^v )'";
+		else if(solver == "glucose")
+			return solverpath + " -model " + getTMPFileName() + " | grep -E '(^s )|(^v )'";
+        //else if(solver == "minisat")
+        //    return "TMPDIR=$(mktemp -p .) && " + solverpath + " -verb=0 " + getTMPFileName() + " \"$TMPDIR\" | echo \"s `head -n1 $TMPDIR`\" && echo \"v `tail -n1 $TMPDIR`\" | echo ; rm \"$TMPDIR\"";
+        else if(solver == "yices-sat")
+			return solverpath + " -m " + getTMPFileName() + " | tail -n 2";
+        else
+            return solverpath + " " + getTMPFileName() + " | grep -E '(^s )|(^v )'";
 	}
-	else if(solver == "glucose_release") //Apanyu momentani
-		return solver + " " + getTMPFileName() + " | grep -E '(^s )|(^c CPU time)' | cut -d ':' -f 2 | sed -e 's/s//g'";
-	else return solver + " " + getTMPFileName() + " | grep -E '(^s )|(^v )'";
+	else {
+        if(solver == "glucose") //Apanyu momentani
+		    return solverpath + " " + getTMPFileName() + " | grep -E '(^s )|(^c CPU time)' | cut -d ':' -f 2 | sed -e 's/s//g'";
+        else
+            return solverpath + " " + getTMPFileName() + " | grep -E '(^s )|(^v )'";
+    }
 }
 
 bool DimacsFileEncoder::checkSAT(int lb, int ub){
@@ -92,7 +103,7 @@ bool DimacsFileEncoder::checkSAT(int lb, int ub){
 	int j = 2;
 	bool sat;
 
-	if(!produceModels() && solver=="glucose_release"){
+	if(!produceModels() && solver=="glucose"){
 		solverchecktime = stof(results[0]);
 		sat = results[1]=="SATISFIABLE";
 	}
@@ -123,11 +134,14 @@ bool DimacsFileEncoder::checkSAT(int lb, int ub){
 	}
 	remove(filename.c_str());
 	return sat;
-
 }
 
 
 bool DimacsFileEncoder::optimize(int lb, int ub){
+    if(solver != "openwbo" && solver != "custom") {
+        std::cerr << "Error: solver " << solver << " doesn't support optimization" << std::endl;
+        exit(UNSUPPORTEDFUNC_ERROR);
+    }
 
 	if(workingFormula.f!=NULL)
 		delete workingFormula.f;
@@ -148,11 +162,15 @@ bool DimacsFileEncoder::optimize(int lb, int ub){
 	std::array<char, 512> buffer;
    std::string result;
 	clock_t begin_time = clock();
+<<<<<<< HEAD
+    std::shared_ptr<FILE> pipe(popen(getCall().c_str(),"r"), pclose);
+=======
 #ifdef _WIN32
 	std::shared_ptr<FILE> pipe(_popen((solver + " " + filename + " | grep -E '(^s )|(^v )'").c_str(), "r"), _pclose);
 #else
 	std::shared_ptr<FILE> pipe(popen((solver + " " + filename + " | grep -E '(^s )|(^v )'").c_str(), "r"), pclose);
 #endif
+>>>>>>> master
     if (!pipe) throw std::runtime_error("popen() failed!");
     while (!feof(pipe.get())) {
         if (fgets(buffer.data(), 512, pipe.get()) != nullptr)
@@ -187,6 +205,9 @@ bool DimacsFileEncoder::optimize(int lb, int ub){
 	return sat;
 }
 
+int DimacsFileEncoder::getObjective() const {
+    return enc->getObjective();
+}
 
 void DimacsFileEncoder::createFile(std::ostream & os, SMTFormula * f) const{
 
@@ -258,7 +279,7 @@ void DimacsFileEncoder::createMaxSATFile(std::ostream & os, SMTFormula * f) cons
 		os << f->getWeights()[i] << " ";
 		for(const literal & l : c.v){
 			if(l.arith){
-				std::cerr << "Error: attempted to add arithmetic literal to SAT encodign"<< std::endl;
+				std::cerr << "Error: attempted to add arithmetic literal to SAT encoding"<< std::endl;
 				exit(BADCODIFICATION_ERROR);
 			}
 
@@ -271,4 +292,12 @@ void DimacsFileEncoder::createMaxSATFile(std::ostream & os, SMTFormula * f) cons
 		}
 		os << "0" << std::endl;
 	}
+}
+
+
+std::string DimacsFileEncoder::getSolver() const {
+    if (solver == "custom")
+        return solver + " (" + solverpath + ")";
+    else
+        return solver;
 }

@@ -55,6 +55,36 @@ antlr_target(
 include_directories(${ANTLR_GOS_OUTPUT_DIR})
 include_directories(${ANTLR_JSON_OUTPUT_DIR})
 
+# build solvers
+set(SOLVERS_PARALLEL true)
+
+# build openwbo
+set(SOLVERS_SOURCES_DIR ${PROJECT_SOURCE_DIR}/src/api/solvers)
+set(SOLVERS_BINARY_DIR ${CMAKE_BINARY_DIR}/solvers)
+add_custom_target(openwbo ALL
+    WORKING_DIRECTORY ${SOLVERS_SOURCES_DIR}/openwbo-repo
+    COMMAND $(MAKE) rs && mkdir -p ${SOLVERS_BINARY_DIR} && mv -vn open-wbo_static ${SOLVERS_BINARY_DIR}/openwbo
+)
+
+# build glucose
+if (${SOLVERS_PARALLEL})
+    add_custom_target(glucose ALL
+        WORKING_DIRECTORY ${SOLVERS_SOURCES_DIR}/glucose-repo/parallel
+        COMMAND $(MAKE) rs && mkdir -p ${SOLVERS_BINARY_DIR} && mv -vn glucose-syrup_static ${SOLVERS_BINARY_DIR}/glucose
+    )
+else ()
+    add_custom_target(glucose ALL
+        WORKING_DIRECTORY ${SOLVERS_SOURCES_DIR}/glucose-repo/simp
+        COMMAND $(MAKE) rs && mkdir -p ${SOLVERS_BINARY_DIR} && mv -vn glucose-syrup_static ${SOLVERS_BINARY_DIR}/glucose
+    )
+endif ()
+
+# build minisat
+set(MINISAT_REPO_DIR ${SOLVERS_SOURCES_DIR}/minisat-repo)
+add_custom_target(minisat ALL
+    WORKING_DIRECTORY ${SOLVERS_SOURCES_DIR}/minisat-repo
+    COMMAND $(MAKE) CXXFLAGS="-fpermissive" && mkdir -p ${SOLVERS_BINARY_DIR} && mv -vn build/release/bin/minisat ${SOLVERS_BINARY_DIR}/minisat
+)
 
 # build GOSCompiler
 include_directories(${PROJECT_SOURCE_DIR}/src/api/)

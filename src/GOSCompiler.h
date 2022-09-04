@@ -50,38 +50,38 @@ public:
         // Parse input file
         ParamJSONRef readParams = runInputVisitor();
 
-        std::string modelStr;
-        bool synError = false;
         // Create model file parse tree
+        bool synError = false;
         BUPFileRef modelFile = BUPFile::Create(_modelFilename);
         symbolTable->parsedFiles.emplace_back(modelFile);
         BUPParser::Csp2satContext *tree = modelFile->getParser()->csp2sat();
-        if( modelFile->getParser()->getNumberOfSyntaxErrors() > 0)
+        if(modelFile->getParser()->getNumberOfSyntaxErrors() > 0)
             synError = true;
-        //return visitor.visit(tree);
 
         GOSTypeVarDefinitionVisitor visitor(symbolTable, _f, readParams);
-        //runVisitor(visitor, modelStr);
         visitor.visit(tree);
 
         GOSPredVisitor predVisitor(symbolTable, _f, _modelFilename);
-        //runVisitor(predVisitor, modelStr);
         predVisitor.visit(tree);
 
         if(!symbolTable->errors){
             GOSConstraintsVisitor constraintsVisitor(symbolTable, _f);
-            //runVisitor(constraintsVisitor, modelStr, false);
             constraintsVisitor.visit(tree);
 
             if(!synError){
                 if(!symbolTable->errors){
+                    if(_f->getNSoftClauses() > 1)
+                        sargs->setOption(OPTIMIZER, (std::string)"native");
+                    else
+                        sargs->setOption(OPTIMIZER, (std::string)"check");
+
+
                     GOSEncoding encoding(_f, symbolTable);
-                    BasicController c(sargs, &encoding, false, 0, 0);
+                    BasicController c(sargs, &encoding, true, 0, 0);
                     c.run();
 
                     if(encoding.isSat()){
                         CSP2SATOutputVisitor outputVisitor(symbolTable, _f);
-                        //bool customOutput = runVisitor(outputVisitor, modelStr, false);
                         bool customOutput = outputVisitor.visit(tree);
                         if(!customOutput)
                             encoding.printModelSolution(std::cout);

@@ -37,6 +37,7 @@ public:
 	bool checkSAT(int lb, int ub);
 	bool checkSATAssuming(int lb, int ub);
 	void narrowBounds(int lb, int ub);
+    std::string getSolver() const override;
 
 };
 

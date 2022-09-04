@@ -102,15 +102,19 @@ SolvingArguments::SolvingArguments() : Arguments<SolvingArg>(
 
 	//Program solving options
 	{arguments::sop("s","solver",SOLVER,"yices",
-	{"yices","lingeling","openwbo","glucose","optimathsat","minisat"},
+	{"yices","lingeling","openwbo","glucose","optimathsat","minisat","custom"},
 	"Solver to use. API only available with yices and glucose. For SMT encodings, only yices. For MaxSAT encodings, only openwbo. For SAT: glucose, minisat. Default: yices."),
+
+     //Program solving options
+     arguments::sop("c","solver-command",SOLVERCOMMAND,"",
+     "Command to execute the custom solver. It must print the whole solver standard output (including model). Only when -s=custom."),
 
 	arguments::bop("e","output-encoding",OUTPUT_ENCODING,false,
 	"If 1, the instance will not be solved but the encoding will be output in stdout. If the encoding does not contain a native optimization functionality, the encoding will correspond to the decision version of the problem with the given/computed bounds. Default: 0."),
 
-	arguments::sop("f","file-format",FILE_FORMAT,"smtlib2",
+	arguments::sop("f","file-format",FILE_FORMAT,"dimacs",
 	{"smtlib2","dimacs"},
-	"Format to be used to output the encodings (if -E=1). Options: dimacs, smtlib2. For SMT encodings, smlib2 is required. Default: smtlib2."),
+	"Format to be used to output the encodings (if -E=1). Options: dimacs, smtlib2. For SMT encodings, smlib2 is required. Default: dimacs."),
 
 	arguments::sop("o","optimizer",OPTIMIZER,"ub",
 	{"check","ub","bu","dico","native"},
@@ -155,17 +159,17 @@ SolvingArguments::SolvingArguments() : Arguments<SolvingArg>(
 
 	arguments::bop("","print-stats",PRINT_CHECKS_STATISTICS,true,
 	"If 1, the solving statistics in the computation of each lower/upper bound will be printed. Default: 1."),
-        
+
     arguments::iop("","trace-sat",TRACE_SAT,0,
     "If 1 and using Minisat, it will be printed the trace of the execution, excluding propagations. If 2, also print conflict analysis. If 3, propagations also printed. Default: 0."),
-        
-        
+
+
     arguments::bop("","enable-restarts",ENABLE_RESTARTS,1,
     "Restarts enable iff set to 1 (only Minisat). Default: 1."),
-        
+
     arguments::iop("","phase-saving",PHASE_SAVING,2,
         "Minisat phase-saving. (0=none, 1=limited, 2=full). Default: 2."),
-        
+
 
 	arguments::sop("","amo",AMO_ENCODING,"quad",
 	{"quad","log","ladder","heule","commander"},
@@ -176,7 +180,7 @@ SolvingArguments::SolvingArguments() : Arguments<SolvingArg>(
 	"Encoding for AMO constraints. Default: sorter."),
 
 
-	arguments::sop("","pb",PB_ENCODING,"bdd", 
+	arguments::sop("","pb",PB_ENCODING,"bdd",
 	util::extract_keys(pbencodings),
 	"Encoding for PB constraints. Default: bdd."),
 
@@ -252,10 +256,11 @@ Encoder * SolvingArguments::getEncoder(Encoding * enc){
 FileEncoder * SolvingArguments::getFileEncoder(Encoding * enc){
 	FileEncoder * fe = NULL;
 	std::string fileformat = getStringOption(FILE_FORMAT);
-	std::string solver = getStringOption(SOLVER);
+    std::string solver = getStringOption(SOLVER);
+    std::string solvercommand = getStringOption(SOLVERCOMMAND);
 	std::string fileprefix = getStringOption(FILE_PREFIX);
 	if(fileformat=="dimacs"){
-		fe = new DimacsFileEncoder(enc,solver);
+		fe = new DimacsFileEncoder(enc,solver,solvercommand);
 		fe->setTmpFileName(fileprefix +".dimacs");
 	}
 	else if(fileformat=="smtlib2"){
