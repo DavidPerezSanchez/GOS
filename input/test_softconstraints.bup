@@ -1,0 +1,8 @@
+viewpoint:
+    var vArray[10];
+    param int iArray[4];
+
+constraints:
+    forall(j in 0..sizeof(vArray)-1) {
+        vArray[j] @iArray[j % 4];
+    };

@@ -1,6 +1,7 @@
 viewpoint:
-    var bool x[10];
-    param int q[10];
+    param int nVars;
+    var bool x[nVars];
+    param int q[nVars];
     param int k;
 
 predicates:
@@ -20,12 +21,8 @@ amkw(var bool x[], param int q[], param int k) {
 		x[i-1] -> s[i][j] @sizeof(x)+1;
 	};
 
-	forall(i in 1..sizeof(s)-1) { // Totes les q son > 0 i <= k
-	    if(q[i-1] < k){
-            forall(j in 0..k-1-q[i-1]){
-		        (s[i-1][j] & x[i-1]) -> s[i][j+q[i-1]] @sizeof(x)+1;
-            };
-	    }; // TODO rangs buits que no s'iterin (error)
+	forall(i in 1..sizeof(s)-1, j in 0..k-1-q[i-1]) { // Totes les q son > 0 i <= k
+        (s[i-1][j] & x[i-1]) -> s[i][j+q[i-1]] @sizeof(x)+1;
 	};
 
 	forall(i in 1..sizeof(x)) {
@@ -34,12 +31,12 @@ amkw(var bool x[], param int q[], param int k) {
 }
 
 constraints:
-    amkw(x, q, k);
-
     // Instancia competicio maxsat weighted
+    amkw(x, q, k);
     forall(i in 0..sizeof(x)-1) {
         x[i] @1;
     };
 
 output:
-    [ x[i] ++ " " | i in 0..sizeof(x)-1];
+    "PB formula = " ++ [ q[i] ++ "*" ++ (x[i] ? "1" : "0") ++ (i < nVars-1 ? " + " : "") | i in 0..nVars-1];
+    "Result = " ++ sum([ q[i] * (x[i] ? 1 : 0) | i in 0..nVars-1]);
