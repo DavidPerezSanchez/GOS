@@ -7,9 +7,12 @@ predicates:
 
 
 constraints:
+    //c Clausula 1
     x @4;
-    !x | !y @2;
-    y | !x @1;
+    //c Clausula 2
+    !x | y @2;
+    //c Clausula 3
+    !y | !x @1;
 
 
 //output:

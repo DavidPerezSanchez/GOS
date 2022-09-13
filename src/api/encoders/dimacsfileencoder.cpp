@@ -274,21 +274,26 @@ void DimacsFileEncoder::createMaxSATFile(std::ostream & os, SMTFormula * f) cons
 
 	for(int i = 0; i < f->getNSoftClauses(); i++){
 		const clause & c = f->getSoftClauses()[i];
-		os << f->getWeights()[i] << " ";
-		for(const literal & l : c.v){
-			if(l.arith){
-				std::cerr << "Error: attempted to add arithmetic literal to SAT encoding"<< std::endl;
-				exit(BADCODIFICATION_ERROR);
-			}
+        if (debug && c.comment != "") {
+            os << "c " << c.comment << std::endl;
+        }
+        else {
+            os << f->getWeights()[i] << " ";
+            for (const literal &l: c.v) {
+                if (l.arith) {
+                    std::cerr << "Error: attempted to add arithmetic literal to SAT encoding" << std::endl;
+                    exit(BADCODIFICATION_ERROR);
+                }
 
-			if(l.v.id <= 0 || l.v.id>f->getNBoolVars()){
-				std::cerr << "Error: asserted undefined Boolean variable"<< std::endl;
-				exit(UNDEFINEDVARIABLE_ERROR);
-			}
+                if (l.v.id <= 0 || l.v.id > f->getNBoolVars()) {
+                    std::cerr << "Error: asserted undefined Boolean variable" << std::endl;
+                    exit(UNDEFINEDVARIABLE_ERROR);
+                }
 
-			os << (l.sign ? l.v.id : -l.v.id) << " ";
-		}
-		os << "0" << std::endl;
+                os << (l.sign ? l.v.id : -l.v.id) << " ";
+            }
+            os << "0" << std::endl;
+        }
 	}
 }
 

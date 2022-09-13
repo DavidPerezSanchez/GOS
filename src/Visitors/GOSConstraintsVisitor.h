@@ -56,7 +56,19 @@ public:
                 std::string text = ctx->DIMACS_LINE_COMMENT()->getText();
                 text = text.substr(4, text.length()-2);
                 clause c = clause(text);
-                this->_f->addClause(c);
+
+                auto it = std::find(ctx->parent->children.begin(), ctx->parent->children.end(), ctx);
+                if (it != ctx->parent->children.end()) {
+                    const int actualChildIndex = std::distance(ctx->parent->children.begin(), it);
+                    auto nextChild = ctx->parent->children[actualChildIndex + 1];
+                    const bool hasWeight = VisitorsUtils::existsRuleContextsRecursive<BUPParser::WeightContext>(nextChild,2);
+                    if (hasWeight) {
+                        this->_f->addSoftClause(c,0);
+                    }
+                    else {
+                        this->_f->addClause(c);
+                    }
+                }
             }
             else {
                 BUPBaseVisitor::visitConstraintDefinition(ctx);

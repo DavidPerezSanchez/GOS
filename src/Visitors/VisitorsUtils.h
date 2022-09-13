@@ -286,6 +286,21 @@ getRuleContextsRecursive(antlr4::ParserRuleContext* ctx) {
     return contexts;
 }
 
+template<typename T>
+static bool
+existsRuleContextsRecursive(antlr4::tree::ParseTree* ctx, int depth) {
+    bool found = antlrcpp::is<T*>(ctx);
+
+    if (depth > 0 && !found) {
+        for (antlr4::tree::ParseTree *child : ctx->children) {
+            found = existsRuleContextsRecursive<T>(child, depth-1);
+            if (found) break;
+        }
+    }
+
+    return found;
+}
+
 
 }
 }
