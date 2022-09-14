@@ -1,5 +1,6 @@
 //
 // Created by Roger Generoso Masós on 19/04/2020.
+// Modified by David Pérez Sánchez on 04/09/2022.
 //
 
 #ifndef CSP2SAT_GOSEXCEPTIONSREPOSITORY_H
@@ -107,6 +108,10 @@ public:
     CSP2SATOutOfRangeException(ExceptionLocation location, std::string expr) :
             GOSException(
                     location,
+                    "\"" + expr + "\" access out of range"
+            ) {}
+    CSP2SATOutOfRangeException(std::string expr) :
+            GOSException(
                     "\"" + expr + "\" access out of range"
             ) {}
 };

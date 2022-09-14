@@ -1,5 +1,6 @@
 //
 // Created by Roger Generoso Masós on 30/03/2020.
+// Modified by David Pérez Sánchez on 25/07/2022.
 //
 
 #ifndef CSP2SAT_VISITORSUTILS_H
@@ -284,6 +285,21 @@ getRuleContextsRecursive(antlr4::ParserRuleContext* ctx) {
     }
 
     return contexts;
+}
+
+template<typename T>
+static bool
+existsRuleContextsRecursive(antlr4::tree::ParseTree* ctx, int depth) {
+    bool found = antlrcpp::is<T*>(ctx);
+
+    if (depth > 0 && !found) {
+        for (antlr4::tree::ParseTree *child : ctx->children) {
+            found = existsRuleContextsRecursive<T>(child, depth-1);
+            if (found) break;
+        }
+    }
+
+    return found;
 }
 
 

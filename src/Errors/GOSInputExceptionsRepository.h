@@ -1,5 +1,6 @@
 //
 // Created by Roger Generoso Masós on 20/04/2020.
+// Modified by David Pérez Sánchez on 04/09/2022.
 //
 
 #ifndef CSP2SAT_GOSINPUTEXCEPTIONSREPOSITORY_H

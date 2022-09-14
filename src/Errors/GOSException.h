@@ -1,5 +1,6 @@
 //
 // Created by Roger Generoso Masós on 19/04/2020.
+// Modified by David Pérez Sánchez on 04/09/2022.
 //
 
 #ifndef CSP2SAT_GOSEXCEPTION_H
@@ -21,30 +22,56 @@ struct ExceptionLocation {
     }
 };
 
-class GOSException : public std::exception {
-protected:
-    std::optional<ExceptionLocation> _location;
-    std::string _message;
-
+class GOSMessage {
 public:
-    GOSException(ExceptionLocation location, const std::string &message) : _location(location), _message(message) {
-        SymbolTable::errors = true;
-    }
+    GOSMessage(ExceptionLocation location, const std::string &message) : _location(location), _message(message) {}
 
-    GOSException(const std::string &message) : _message(message) {
-        SymbolTable::errors = true;
-    }
+    GOSMessage(const std::string &message) : _message(message) {}
+
+    virtual ~GOSMessage() {}
+
+    virtual std::string getErrorMessage() = 0;
 
     void setLocation(ExceptionLocation location) {
         _location = location;
     }
 
-    std::string getErrorMessage() {
+protected:
+    std::optional<ExceptionLocation> _location;
+    std::string _message;
+};
+
+class GOSException : public std::exception, public GOSMessage {
+public:
+    GOSException(ExceptionLocation location, const std::string &message) : GOSMessage(location, message) {
+        SymbolTable::errors = true;
+    }
+
+    GOSException(const std::string &message) : GOSMessage(message) {
+        SymbolTable::errors = true;
+    }
+
+    std::string getErrorMessage() override {
         std::string error;
         if(_location.has_value())
             error += _location.value().toString() + " ";
         error += "ERROR: " + _message;
         return error;
+    }
+};
+
+class GOSWarning : public GOSMessage {
+public:
+    GOSWarning(ExceptionLocation location, const std::string &message) :  GOSMessage(location, message) { }
+
+    GOSWarning(const std::string &message) : GOSMessage(message){ }
+
+    std::string getErrorMessage() {
+        std::string warn;
+        if(_location.has_value())
+            warn += _location.value().toString() + " ";
+        warn += "WARNING: " + _message;
+        return warn;
     }
 };
 

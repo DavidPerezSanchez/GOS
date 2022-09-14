@@ -4,8 +4,8 @@ WS
    : [ \t\n\r] + -> skip
    ;
 
+DIMACS_LINE_COMMENT : '//c ' ~[\r\n]*;
 LINE_COMMENT : '//' ~[\r\n]* -> skip;
-
 BLOCK_COMMENT : '/*' .*? '*/' -> skip;
 
 // basic structure
@@ -63,6 +63,8 @@ TK_OP_AGG_SUM: 'sum';
 TK_OP_AGG_LENGTH: 'length';
 TK_OP_AGG_MAX: 'max';
 TK_OP_AGG_MIN: 'min';
+TK_OP_AGG_OR: 'lor';
+TK_OP_AGG_AND: 'land';
 
 TK_OP_LOGIC_NOT: 'not';
 TK_OP_LOGIC_AND: 'and';
@@ -132,12 +134,6 @@ predCallParam:
 predVarDefinitionBlock: (varDefinition TK_SEMICOLON)*;
 predInclude: TK_INCLUDE TK_STRING TK_SEMICOLON;
 
-
-// TODO permetre passar de tot com a parametre
-// TODO soft constraints permetre pesos amb notació @ {expressió que es resolgui en temps de compilació}
-
-
-
 constraintDefinitionBlock: TK_CONSTRAINTS TK_COLON constraintDefinition*;
 
 outputBlock: TK_OUTPUT TK_COLON (string TK_SEMICOLON)*;
@@ -152,13 +148,15 @@ arrayDefinition: (TK_LCLAUDATOR arraySize=expr? TK_RCLAUDATOR)*;
 
 // EXPRESSIONS
 
-expr: condition=exprAnd (TK_INTERROGANT op1=expr TK_COLON op2=expr)?; // Ternary
+expr: condition=exprOr (TK_INTERROGANT op1=expr TK_COLON op2=expr)?; // Ternary
 
-opAggregateExpr: TK_OP_AGG_LENGTH | TK_OP_AGG_MAX | TK_OP_AGG_MIN | TK_OP_AGG_SUM | TK_OP_AGG_SIZEOF;
+opAggregateExpr:
+    TK_OP_AGG_LENGTH | TK_OP_AGG_MAX | TK_OP_AGG_MIN | TK_OP_AGG_SUM
+    | TK_OP_AGG_SIZEOF | TK_OP_AGG_OR | TK_OP_AGG_AND;
 exprListAgg: opAggregateExpr TK_LPAREN list TK_RPAREN;
 
-exprAnd: exprOr (TK_OP_LOGIC_AND exprOr)*;
-exprOr: exprEq (TK_OP_LOGIC_OR exprEq)*;
+exprOr: exprAnd (TK_OP_LOGIC_OR exprAnd)*;
+exprAnd: exprEq (TK_OP_LOGIC_AND exprEq)*;
 
 opEquality: TK_OP_REL_EQ | TK_OP_REL_NEQ;
 exprEq: exprRel (opEquality exprRel)*;
@@ -188,7 +186,9 @@ valueBaseType: integer=TK_INT_VALUE | boolean=TK_BOOLEAN_VALUE;
 
 // CONSTRAINTS
 
-constraintDefinition: ( forall | ifThenElse | constraint ) TK_SEMICOLON;
+constraintDefinition:
+    ( forall | ifThenElse | constraint ) TK_SEMICOLON
+    | DIMACS_LINE_COMMENT;
 
 auxiliarListAssignation: name=TK_IDENT TK_IN list;
 
@@ -216,6 +216,7 @@ listResultExpr:
 weight: TK_WEIGHT expr;
 constraint:
     constraint_expression weight?
+    | predCall
     | constraint_aggreggate_op;
 
 constraint_expression: constraint_double_implication;
@@ -244,7 +245,6 @@ constraint_literal: TK_CONSTRAINT_NOT? constraint_base;
 
 constraint_base:
     varAccess
-    | predCall
     | TK_BOOLEAN_VALUE
     | TK_LPAREN constraint_expression TK_RPAREN;
 

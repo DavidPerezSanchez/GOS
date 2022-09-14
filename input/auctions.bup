@@ -1,0 +1,27 @@
+viewpoint:
+    param int nBids;
+    param int nItems;
+    param bool bidsItems[nBids][nItems];
+    param int bidsValues[nBids];
+    var bidsAccepted[nBids];
+    var x;
+
+constraints:
+    //c Ofertes incompatibles
+    forall(b1 in 0..nBids-1, b2 in b1+1..nBids-1) {
+        if(lor([bidsItems[b1][i] and bidsItems[b2][i] | i in 0..nItems-1])) {
+            !bidsAccepted[b1] | !bidsAccepted[b2];
+        };
+    };
+
+    //c Maxim benefici
+    forall(b in 0..nBids-1) {
+        bidsAccepted[b] @bidsValues[b];
+    };
+
+output:
+    "Bids:";
+    ["#" ++ i ++ ": ({" ++ [ (bidsItems[i][j] ? (j ++ (j < nItems-1 ? ", " : "")) : "") | j in 0..nItems-1] ++ "}, " ++ bidsValues[i] ++ ")" ++ (i < nBids-1 ? "\n" : "") | i in 0..nBids-1];
+    "Sold items = " ++ [bidsAccepted[b] and bidsItems[b][i] ? i ++ " " : "" | b in 0..nBids-1, i in 0..nItems-1];
+    "Winner bids = " ++ [ "#" ++ b ++ " " | b in 0..nBids-1 where bidsAccepted[b]];
+    "Seller benefit = " ++ sum([ bidsAccepted[i] ? bidsValues[i] : 0 | i in 0..nBids-1]);

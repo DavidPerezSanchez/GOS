@@ -1,5 +1,6 @@
 //
 // Created by Roger Generoso Masós on 30/03/2020.
+// Modified by David Pérez Sánchez on 25/07/2022.
 //
 
 #ifndef CSP2SAT_GOSCUSTOMBASEVISITOR_H
@@ -95,7 +96,31 @@ public:
         ArraySymbolRef list = visit(ctx->list());
         ValueRef result = nullptr;
 
-        if(list->getElementsType()->getTypeIndex() == SymbolTable::tInt){
+        if(ctx->opAggregateExpr()->getText() == "sizeof") {
+            const int size = list->getSymbolVector().size();
+            result = IntValue::Create(size);
+        }
+        else if (list->getElementsType()->getTypeIndex() == SymbolTable::tBool) {
+            std::vector<SymbolRef> elements = list->getSymbolVector();
+            if(ctx->opAggregateExpr()->getText() == "land"){
+                bool res = true;
+                for(auto & element : elements) {
+                    const int val = Utils::as<AssignableSymbol>(element)->getValue()->getRealValue();
+                    res &= (val == 0 ? false : true);
+                }
+                result = BoolValue::Create(res);
+            }
+            else if (ctx->opAggregateExpr()->getText() == "lor") {
+                bool res = false;
+                for(auto & element : elements) {
+                    const int val = Utils::as<AssignableSymbol>(element)->getValue()->getRealValue();
+                    res |= (val == 0 ? false : true);
+                }
+                result = BoolValue::Create(res);
+            }
+            else throw std::invalid_argument("Aggregate operator not supported");
+        }
+        else if(list->getElementsType()->getTypeIndex() == SymbolTable::tInt){
             std::vector<SymbolRef> elements = list->getSymbolVector();
 
             if(ctx->opAggregateExpr()->getText() == "sum"){
@@ -126,10 +151,6 @@ public:
                 result = IntValue::Create(elements.size());
             }
         }
-        else if(ctx->opAggregateExpr()->getText() == "sizeof") {
-            const int size = list->getSymbolVector().size();
-            result = IntValue::Create(size);
-        }
         else{
             throw CSP2SATInvalidExpressionTypeException(
                 {
@@ -147,26 +168,13 @@ public:
     }
 
     antlrcpp::Any visitExprAnd(BUPParser::ExprAndContext *ctx) override {
-        ValueRef result = visit(ctx->exprOr(0));
-        if (ctx->exprOr().size() > 1) {
-            ValueRef res = BoolValue::Create(true);
-            for (int i = 0; i < ctx->exprOr().size(); i++) {
-                ValueRef currValue = visit(ctx->exprOr(i));
-                res->setRealValue(res->getRealValue() && currValue->getRealValue());
-            }
-            return res;
-        }
-        return result;
-    }
-
-    antlrcpp::Any visitExprOr(BUPParser::ExprOrContext *ctx) override {
         ValueRef result = visit(ctx->exprEq(0));
         if (ctx->exprEq().size() > 1) {
-            ValueRef res = BoolValue::Create(false);
+            ValueRef res = BoolValue::Create(true);
             for (int i = 0; i < ctx->exprEq().size(); i++) {
                 ValueRef currValue = visit(ctx->exprEq(i));
                 if (currValue->isBoolean())
-                    res->setRealValue(res->getRealValue() || currValue->getRealValue());
+                    res->setRealValue(res->getRealValue() && currValue->getRealValue());
                 else {
                     throw CSP2SATInvalidExpressionTypeException(
                         {
@@ -179,6 +187,19 @@ public:
                         VisitorsUtils::getTypeName(SymbolTable::tBool)
                     );
                 }
+            }
+            return res;
+        }
+        return result;
+    }
+
+    antlrcpp::Any visitExprOr(BUPParser::ExprOrContext *ctx) override {
+        ValueRef result = visit(ctx->exprAnd(0));
+        if (ctx->exprAnd().size() > 1) {
+            ValueRef res = BoolValue::Create(false);
+            for (int i = 0; i < ctx->exprAnd().size(); i++) {
+                ValueRef currValue = visit(ctx->exprAnd(i));
+                res->setRealValue(res->getRealValue() || currValue->getRealValue());
             }
             return res;
         }
@@ -321,7 +342,7 @@ public:
     }
 
     antlrcpp::Any visitExprNot(BUPParser::ExprNotContext *ctx) override {
-        ValueRef result = visit(ctx->expr_base()); // TODO safe cast?
+        ValueRef result = visit(ctx->expr_base());
         if (ctx->op) {
             if (result->isBoolean()) {
                 result = BoolValue::Create(!result->getRealValue());
@@ -373,7 +394,16 @@ public:
             this->currentScope = this->currentLocalScope;
             ValueRef index = visit(ctx->index);
             this->currentScope = prev;
-            return this->currentScope->resolve(std::to_string(index->getRealValue()));
+            try {
+                return this->currentScope->resolve(std::to_string(index->getRealValue()));
+            } catch (CSP2SATOutOfRangeException e) {
+                e.setLocation({
+                    st->parsedFiles.front()->getPath(),
+                    ctx->start->getLine(),
+                    ctx->start->getCharPositionInLine()
+                });
+                throw e;
+            }
         }
         return nullptr;
     }
@@ -491,28 +521,30 @@ public:
         int minValue = minRange->getRealValue();
         int maxValue = maxRange->getRealValue();
 
+        ArraySymbolRef result = ArraySymbol::Create(
+                "auxRangList",
+                this->currentScope,
+                SymbolTable::_integer
+        );
         if (minValue <= maxValue) {
-            ArraySymbolRef result = ArraySymbol::Create(
-                    "auxRangList",
-                    this->currentScope,
-                    SymbolTable::_integer
-            );
             for (int i = 0; i <= (maxValue - minValue); i++) {
                 AssignableSymbolRef newValue = AssignableSymbol::Create(std::to_string(i), SymbolTable::_integer);
                 newValue->setValue(IntValue::Create(minValue + i));
                 result->add(newValue);
             }
-            return result;
         } else {
-            throw GOSException(
+            GOSWarning warning = GOSWarning(
                 {
                     st->parsedFiles.front()->getPath(),
-                    ctx->start->getLine(),
-                    ctx->start->getCharPositionInLine(),
+                    ctx->min->start->getLine(),
+                    ctx->min->start->getCharPositionInLine(),
                 },
-                "Range must be ascendant"
+                "Descendant range \"" + ctx->getText() + "\" detected (" +
+                    std::to_string(minValue) + ".." + std::to_string(maxValue) + "), loop omitted"
             );
+            std::cerr << warning.getErrorMessage() << std::endl;
         }
+        return result;
     }
 
     antlrcpp::Any visitAuxiliarListAssignation(BUPParser::AuxiliarListAssignationContext *ctx) override {

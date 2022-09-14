@@ -1,0 +1,26 @@
+viewpoint:
+    var v;
+    var vArray[10];
+    //var vMatrix[10][10];
+    //param int i;
+    //param int iArray[4];
+    //param int iMatrix[3][4];
+    //param bool b;
+    //param bool bArray[3];
+    //param bool bMatrix[3][3];
+
+predicates:
+    pred() {
+        var bool predArray[3];
+        //c Pred comment
+        forall(i in 0..sizeof(predArray)-1) {
+            predArray[i];
+        };
+    }
+
+constraints:
+    //c Pred call
+    pred();
+
+    //c Constraint block clause
+    !v;

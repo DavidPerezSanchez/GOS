@@ -1,5 +1,6 @@
 //
 // Created by Roger Generoso Masós on 01/04/2020.
+// Modified by David Pérez Sánchez on 01/07/2022.
 //
 
 #ifndef CSP2SAT_SCOPEDSYMBOL_H

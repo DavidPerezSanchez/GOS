@@ -1,5 +1,6 @@
 //
 // Created by Roger Generoso Masós on 31/03/2020.
+// Modified by David Pérez Sánchez on 25/07/2022.
 //
 
 #ifndef CSP2SAT_ARRAYSYMBOL_H
@@ -39,7 +40,7 @@ public:
             if(index < size && index >= 0){
                 return elements[index];
             }
-            throw CSP2SATOutOfRangeException({"", 0, 0}, getFullName() + "[" + name + "]");
+            throw CSP2SATOutOfRangeException(getFullName() + "[" + name + "]");
         }
         else
             return enclosingScope->resolve(name);
@@ -89,6 +90,18 @@ public:
     void add(SymbolRef sym) {
         elements.push_back(sym);
         size++;
+    }
+
+    std::string toString() const override {
+        std::string res;
+        res += "[";
+        for (int i = 0; i < elements.size(); i++) {
+            res += elements[i]->toString();
+            if (i < elements.size()-1)
+                res += ",";
+        }
+        res += "]";
+        return res;
     }
 
 protected:

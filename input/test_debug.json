@@ -1,0 +1,16 @@
+{
+  "i" : 3,
+  "iArray" : [1, 2, 3, 4],
+  "iMatrix" : [
+    [1,  2,  3,  4],
+    [5,  6,  7,  8],
+    [9, 10, 11, 12]
+  ],
+  "b" : true,
+  "bArray" : [true, false, true],
+  "bMatrix" : [
+    [true,  false, false],
+    [false, true,  false],
+    [false, false, true]
+  ]
+}

@@ -1,5 +1,6 @@
 //
 // Created by Roger Generoso Masós on 19/03/2020.
+// Modified by David Pérez Sánchez on 23/05/2022.
 //
 
 #ifndef CSP2SAT_ASSIGNABLESYMBOL_H
@@ -28,6 +29,13 @@ public:
 
     void setValue(ValueRef value) {
         this->val = value;
+    }
+
+    std::string toString() const override {
+        if (val->isBoolean())
+            return val->getRealValue() == 0 ? "false" : "true";
+        else
+            return std::to_string(val->getRealValue());
     }
 
 protected:

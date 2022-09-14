@@ -18,9 +18,9 @@ using namespace smtapi;
  */
 class DimacsFileEncoder : public FileEncoder {
 private:
-
     std::string solver;
     std::string solverpath;
+    bool debug;
 
 	void createSATFile(std::ostream & os, SMTFormula * f) const;
 
@@ -28,10 +28,9 @@ private:
 	
 	std::string getCall() const;
 	
-public:	
-  
+public:
 	//Constructor
-	DimacsFileEncoder(Encoding * enc, const std::string &solver, const std::string &solverpath);
+	DimacsFileEncoder(Encoding * enc, const std::string &solver, const std::string &solverpath, bool debug = false);
 	
 	//Destructor
 	~DimacsFileEncoder();

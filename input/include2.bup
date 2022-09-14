@@ -1,0 +1,5 @@
+include "./globals.bup";
+
+predInclude2(var bool x) {
+    predGlobal(x);
+}

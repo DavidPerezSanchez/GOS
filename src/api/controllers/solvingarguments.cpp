@@ -101,11 +101,10 @@ SolvingArguments::SolvingArguments() : Arguments<SolvingArg>(
 	0,
 
 	//Program solving options
-	{arguments::sop("s","solver",SOLVER,"yices",
-	{"yices","lingeling","openwbo","glucose","optimathsat","minisat","custom"},
-	"Solver to use. API only available with yices and glucose. For SMT encodings, only yices. For MaxSAT encodings, only openwbo. For SAT: glucose, minisat. Default: yices."),
+	{arguments::sop("s","solver",SOLVER,"glucose",
+	{"openwbo","glucose","minisat","custom"},
+	"Solver to use. API only available with minisat and glucose. Without API, only available glucose, openwbo and custom. For MaxSAT: openwbo. For SAT: glucose, minisat. Default: glucose."),
 
-     //Program solving options
      arguments::sop("c","solver-command",SOLVERCOMMAND,"",
      "Command to execute the custom solver. It must print the whole solver standard output (including model). Only when -s=custom."),
 
@@ -169,6 +168,9 @@ SolvingArguments::SolvingArguments() : Arguments<SolvingArg>(
 
     arguments::iop("","phase-saving",PHASE_SAVING,2,
         "Minisat phase-saving. (0=none, 1=limited, 2=full). Default: 2."),
+
+    arguments::bop("d","debug-dimacs",DEBUG_DIMACS,0,
+        "Append debug information to DIMACS files (available info: variables id, parameters value, literal comments written after \"\\\\c \"). Default: 0."),
 
 
 	arguments::sop("","amo",AMO_ENCODING,"quad",
@@ -258,9 +260,10 @@ FileEncoder * SolvingArguments::getFileEncoder(Encoding * enc){
 	std::string fileformat = getStringOption(FILE_FORMAT);
     std::string solver = getStringOption(SOLVER);
     std::string solvercommand = getStringOption(SOLVERCOMMAND);
-	std::string fileprefix = getStringOption(FILE_PREFIX);
+    std::string fileprefix = getStringOption(FILE_PREFIX);
 	if(fileformat=="dimacs"){
-		fe = new DimacsFileEncoder(enc,solver,solvercommand);
+        bool debug_dimacs = getBoolOption(DEBUG_DIMACS);
+        fe = new DimacsFileEncoder(enc,solver,solvercommand, debug_dimacs);
 		fe->setTmpFileName(fileprefix +".dimacs");
 	}
 	else if(fileformat=="smtlib2"){

@@ -1,5 +1,6 @@
 //
 // Created by Roger Generoso Masós on 16/04/2020.
+// Modified by David Pérez Sánchez on 07/08/2022.
 //
 
 #ifndef CSP2SAT_CSP2SATENCODING_H
@@ -51,7 +52,7 @@ private:
         std::map<std::string, SymbolRef> currentScopeSymbols = currentScope->getScopeSymbols();
 
         for(std::pair<std::string, SymbolRef> sym : currentScopeSymbols){
-            if(sym.second->getType()){
+            if(sym.second->getType() && !Utils::is<PredSymbol>(sym.second)){
                 if(sym.second->getType()->getTypeIndex() == SymbolTable::tCustom || sym.second->getType()->getTypeIndex() == SymbolTable::tArray) {
                     if (!isdigit(sym.first[0]))
                         printModelSolution(Utils::as<ScopedSymbol>(sym.second), os, prefix + "." + sym.first);
@@ -121,7 +122,7 @@ public:
                 bool val = lit.sign ? model[lit.v.id] : !model[lit.v.id];
                 isSat = isSat || val;
             }
-            if(isSat)
+            if(!isSat)
                 objective += weights[i];
         }
 

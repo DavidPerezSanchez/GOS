@@ -10,17 +10,18 @@
 
 using namespace smtapi;
 
-DimacsFileEncoder::DimacsFileEncoder(Encoding * enc, const std::string & solver, const std::string &solverpath = "") :
-    FileEncoder(enc){
-	if(solver=="yices")
-		this->solver="yices-sat";
-	else
-        this->solver=solver;
+DimacsFileEncoder::DimacsFileEncoder(Encoding * enc, const std::string & solver, const std::string &solverpath = "", bool debug) :
+    FileEncoder(enc), debug(debug)
+{
+if(solver=="yices")
+    this->solver="yices-sat";
+else
+    this->solver=solver;
 
-    if (solverpath == "")
-        this->solverpath = "solvers/" + solver;
-    else
-        this->solverpath = solverpath;
+if (solverpath == "")
+    this->solverpath = "solvers/" + solver;
+else
+    this->solverpath = solverpath;
 }
 
 DimacsFileEncoder::~DimacsFileEncoder(){
@@ -33,18 +34,16 @@ std::string DimacsFileEncoder::getCall() const{
             return solverpath + " " + getTMPFileName() + " | grep -E '(^s )|(^v )'";
 		else if(solver == "glucose")
 			return solverpath + " -model " + getTMPFileName() + " | grep -E '(^s )|(^v )'";
-        //else if(solver == "minisat")
-        //    return "TMPDIR=$(mktemp -p .) && " + solverpath + " -verb=0 " + getTMPFileName() + " \"$TMPDIR\" | echo \"s `head -n1 $TMPDIR`\" && echo \"v `tail -n1 $TMPDIR`\" | echo ; rm \"$TMPDIR\"";
-        else if(solver == "yices-sat")
-			return solverpath + " -m " + getTMPFileName() + " | tail -n 2";
+        else if(solver == "minisat")
+            throw std::invalid_argument("MiniSat solver without API not supported");
         else
-            return solverpath + " " + getTMPFileName() + " | grep -E '(^s )|(^v )'";
+            return solverpath + " " + getTMPFileName() + " | grep -E '(^S )|(^s )|(^v )'";
 	}
 	else {
         if(solver == "glucose") //Apanyu momentani
 		    return solverpath + " " + getTMPFileName() + " | grep -E '(^s )|(^c CPU time)' | cut -d ':' -f 2 | sed -e 's/s//g'";
         else
-            return solverpath + " " + getTMPFileName() + " | grep -E '(^s )|(^v )'";
+            return solverpath + " " + getTMPFileName() + " | grep -E '(^S )|(^s )|(^v )'";
     }
 }
 
@@ -230,20 +229,25 @@ void DimacsFileEncoder::createSATFile(std::ostream & os, SMTFormula * f) const{
 
 	os << "p cnf " << f->getNBoolVars() << " " << f->getNClauses() << std::endl;
 	for(const clause & c : f->getClauses()){
-		for(const literal & l : c.v){
-			if(l.arith){
-				std::cerr << "Error: attempted to add arithmetic literal to SAT encodign"<< std::endl;
-				exit(BADCODIFICATION_ERROR);
-			}
+        if (debug && c.comment != "") {
+            os << "c " << c.comment << std::endl;
+        }
+        else if (!c.v.empty()) {
+            for (const literal &l: c.v) {
+                if (l.arith) {
+                    std::cerr << "Error: attempted to add arithmetic literal to SAT encoding" << std::endl;
+                    exit(BADCODIFICATION_ERROR);
+                }
 
-			if(l.v.id <= 0 || l.v.id>f->getNBoolVars()){
-				std::cerr << "Error: asserted undefined Boolean variable"<< std::endl;
-				exit(UNDEFINEDVARIABLE_ERROR);
-			}
+                if (l.v.id <= 0 || l.v.id > f->getNBoolVars()) {
+                    std::cerr << "Error: asserted undefined Boolean variable" << std::endl;
+                    exit(UNDEFINEDVARIABLE_ERROR);
+                }
 
-			os << (l.sign ? l.v.id : -l.v.id) << " ";
-		}
-		os << "0" << std::endl;
+                os << (l.sign ? l.v.id : -l.v.id) << " ";
+            }
+            os << "0" << std::endl;
+        }
 	}
 }
 
@@ -257,40 +261,50 @@ void DimacsFileEncoder::createMaxSATFile(std::ostream & os, SMTFormula * f) cons
 	int whard = f->getHardWeight();
 	os << "p wcnf " << f->getNBoolVars() << " " << f->getNClauses() + f->getNSoftClauses() << " " << whard << std::endl;
 	for(const clause & c : f->getClauses()){
-		os << whard << " ";
-		for(const literal & l : c.v){
-			if(l.arith){
-				std::cerr << "Error: attempted to add arithmetic literal to SAT encodign"<< std::endl;
-				exit(BADCODIFICATION_ERROR);
-			}
+        if (debug && c.comment != "") {
+            os << "c " << c.comment << std::endl;
+        }
+        else if (!c.v.empty()){
+            os << whard << " ";
+            for (const literal &l: c.v) {
+                if (l.arith) {
+                    std::cerr << "Error: attempted to add arithmetic literal to SAT encoding" << std::endl;
+                    exit(BADCODIFICATION_ERROR);
+                }
 
-			if(l.v.id <= 0 || l.v.id>f->getNBoolVars()){
-				std::cerr << "Error: asserted undefined Boolean variable"<< std::endl;
-				exit(UNDEFINEDVARIABLE_ERROR);
-			}
+                if (l.v.id <= 0 || l.v.id > f->getNBoolVars()) {
+                    std::cerr << "Error: asserted undefined Boolean variable" << std::endl;
+                    exit(UNDEFINEDVARIABLE_ERROR);
+                }
 
-			os << (l.sign ? l.v.id : -l.v.id) << " ";
-		}
-		os << "0" << std::endl;
+                os << (l.sign ? l.v.id : -l.v.id) << " ";
+            }
+            os << "0" << std::endl;
+        }
 	}
 
 	for(int i = 0; i < f->getNSoftClauses(); i++){
 		const clause & c = f->getSoftClauses()[i];
-		os << f->getWeights()[i] << " ";
-		for(const literal & l : c.v){
-			if(l.arith){
-				std::cerr << "Error: attempted to add arithmetic literal to SAT encoding"<< std::endl;
-				exit(BADCODIFICATION_ERROR);
-			}
+        if (debug && c.comment != "") {
+            os << "c " << c.comment << std::endl;
+        }
+        else {
+            os << f->getWeights()[i] << " ";
+            for (const literal &l: c.v) {
+                if (l.arith) {
+                    std::cerr << "Error: attempted to add arithmetic literal to SAT encoding" << std::endl;
+                    exit(BADCODIFICATION_ERROR);
+                }
 
-			if(l.v.id <= 0 || l.v.id>f->getNBoolVars()){
-				std::cerr << "Error: asserted undefined Boolean variable"<< std::endl;
-				exit(UNDEFINEDVARIABLE_ERROR);
-			}
+                if (l.v.id <= 0 || l.v.id > f->getNBoolVars()) {
+                    std::cerr << "Error: asserted undefined Boolean variable" << std::endl;
+                    exit(UNDEFINEDVARIABLE_ERROR);
+                }
 
-			os << (l.sign ? l.v.id : -l.v.id) << " ";
-		}
-		os << "0" << std::endl;
+                os << (l.sign ? l.v.id : -l.v.id) << " ";
+            }
+            os << "0" << std::endl;
+        }
 	}
 }
 

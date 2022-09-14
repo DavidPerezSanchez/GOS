@@ -1,5 +1,6 @@
 //
 // Created by Roger Generoso Masós on 11/03/2020.
+// Modified by David Pérez Sánchez on 24/07/2022.
 //
 
 #ifndef CSP2SAT_GOSTYPEVARDEFINITIONVISITOR_H
@@ -81,6 +82,7 @@ public:
         } else {
             newVar = VariableSymbol::Create(ctx->name->getText(), this->_f);
         }
+        this->_f->addClause(clause("var " + name + "-> " + newVar->toString()));
         currentScope->define(newVar);
 
         return nullptr;
@@ -151,6 +153,7 @@ public:
             }
             newConst = element;
         }
+        this->_f->addClause(clause("param " + name + "-> " + newConst->toString()));
         currentScope->define(newConst);
         return nullptr;
     }

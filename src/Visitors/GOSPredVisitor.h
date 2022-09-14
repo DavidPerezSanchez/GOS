@@ -23,13 +23,13 @@ public:
         _includes.push(std::filesystem::canonical(filename));
     }
 
-    antlrcpp::Any visitPredCall(BUPParser::PredCallContext *ctx) override { // TODO copied from GOSConstraintsVisitor. Maybe put in BUPBaseVisitor the common part?
+    antlrcpp::Any visitPredCall(BUPParser::PredCallContext *ctx) override {
         // Get call parameters
         std::vector<SymbolRef> paramsSymbols;
         PredSymbol::Signature signature;
         signature.name = ctx->name->getText();
         if (ctx->predCallParams()) {
-            this->accessingNotLeafVariable = true; // TODO ask Mateu if this is correct
+            this->accessingNotLeafVariable = true;
             // Evaluate all parameters from call
             for (auto predCallParamCtx: ctx->predCallParams()->predCallParam()) {
                 SymbolRef sym;
@@ -167,12 +167,7 @@ public:
     }
 
     antlrcpp::Any visitPredDefBlockBody(BUPParser::PredDefBlockBodyContext *ctx) override {
-        try {
-            return BUPBaseVisitor::visitPredDefBlockBody(ctx);
-        } catch (GOSException &e) {
-            std::cerr << e.getErrorMessage() << std::endl;
-        }
-        return nullptr;
+        return BUPBaseVisitor::visitPredDefBlockBody(ctx);
     }
 
     antlrcpp::Any visitVarDefinition(BUPParser::VarDefinitionContext *ctx) override {
@@ -233,41 +228,59 @@ public:
     }
 
     antlrcpp::Any visitPredDef(BUPParser::PredDefContext *ctx) override {
-        std::string name = ctx->name->getText();
-        const size_t line = ctx->name->getLine();
-        const size_t col = ctx->name->getCharPositionInLine();
+        try {
+            std::string name = ctx->name->getText();
+            const size_t line = ctx->name->getLine();
+            const size_t col = ctx->name->getCharPositionInLine();
 
-        // Get whole predicate signature
-        PredSymbol::Signature signature;
-        signature.name = name;
-        if(ctx->predDefParams()) {
-            for (auto defCtx: ctx->predDefParams()->definition()) {
-                try {
-                    PredSymbol::ParamRef param = visit(defCtx);
-                    signature.params.push_back(param);
-                } catch (GOSException &e) {
-                    std::cerr << e.getErrorMessage() << std::endl;
+            // Get whole predicate signature
+            PredSymbol::Signature signature;
+            signature.name = name;
+            if(ctx->predDefParams()) {
+                for (auto defCtx: ctx->predDefParams()->definition()) {
+                    try {
+                        PredSymbol::ParamRef param = visit(defCtx);
+                        signature.params.push_back(param);
+                    } catch (GOSException &e) {
+                        std::cerr << e.getErrorMessage() << std::endl;
+                    }
                 }
             }
+
+            // Check if a predicate with same signature is already declared
+            if(this->currentScope->existsInScope(signature.toStringSymTable())) {
+                throw CSP2SATAlreadyExistException(
+                    {
+                        _includes.top(),
+                        line,
+                        col
+                    },
+                    name
+                );
+            }
+
+            // Define predicate symbol as global
+            PredSymbol::Location loc = {_includes.top(), line, col};
+            PredSymbolRef pred = PredSymbol::Create(signature, loc, ctx);
+            st->gloabls->define(pred);
+
+        } catch (GOSException &e) {
+            std::cerr << e.getErrorMessage() << std::endl;
         }
 
-        // Check if a predicate with same signature is already declared
-        if(this->currentScope->existsInScope(signature.toStringSymTable())) {
-            throw CSP2SATAlreadyExistException(
-                {
-                    _includes.top(),
-                    line,
-                    col
-                },
-                name
-            );
-        }
+        return nullptr;
+    }
 
-        // Define predicate symbol as global
-        PredSymbol::Location loc = {_includes.top(), line, col};
-        PredSymbolRef pred = PredSymbol::Create(signature, loc, ctx);
-        st->gloabls->define(pred);
+    antlrcpp::Any visitPredDefParams(BUPParser::PredDefParamsContext *ctx) override {
+        return BUPBaseVisitor::visitPredDefParams(ctx);
+    }
 
+    antlrcpp::Any visitPredDefBody(BUPParser::PredDefBodyContext *ctx) override {
+        return BUPBaseVisitor::visitPredDefBody(ctx);
+    }
+
+    antlrcpp::Any visitPredVarDefinitionBlock(BUPParser::PredVarDefinitionBlockContext *ctx) override {
+        assert(false); // this block should not be evaluated in pred definition
         return nullptr;
     }
 
@@ -290,11 +303,19 @@ public:
                 visit(file->getParser()->predDefBlockBody());
                 _includes.pop();
             } catch (std::ifstream::failure e) {
-                std::cerr << "Error reading file: " << filePath.filename() << std::endl; // TODO GOSException
+                std::cerr << "Error reading file: " << filePath.filename() << std::endl;
             }
         }
         else {
-            std::cerr << "Warning: file " << filePath.filename() << " already included, parsing omitted" << std::endl;
+            GOSWarning warning = GOSWarning(
+                {
+                    st->parsedFiles.front()->getPath(),
+                    ctx->start->getLine(),
+                    ctx->start->getCharPositionInLine(),
+                },
+                "file \"" + filePath.filename().string() + "\" already included, parsing omitted"
+            );
+            std::cerr << warning.getErrorMessage() << std::endl;
         }
 
         return nullptr;

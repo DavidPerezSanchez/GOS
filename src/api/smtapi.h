@@ -2,6 +2,7 @@
 #define SMTAPI_DEFINITION
 
 #include <vector>
+#include <string>
 
 
 /*
@@ -138,17 +139,20 @@ struct literal{
 //Clause type, defined as a std::vector of literals
 struct clause{
 	std::vector<literal> v;
-	clause(){}
-	clause(const clause & c){
+    std::string comment;
+	clause() {}
+    clause(const std::string& c) : comment(c) {}
+	clause(const clause & c) {
 		this->v = c.v;
+        this->comment = c.comment;
 	}
-	clause(const literal &lit){
+	clause(const literal &lit) {
 		v.push_back(lit);
 	}
-	clause(const boolvar &b){
+	clause(const boolvar &b) {
 		v.push_back(b);
 	}
-	clause(const std::vector<literal> & vec){
+	clause(const std::vector<literal> & vec) {
 		v=vec;
 	}
 	clause& operator|=(const clause &c){
