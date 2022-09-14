@@ -1,5 +1,6 @@
 //
 // Created by Roger Generoso Masós on 13/04/2020.
+// Modified by David Pérez Sánchez on 14/09/2022.
 //
 
 #ifndef CSP2SAT_GOSERRORLISTENER_H

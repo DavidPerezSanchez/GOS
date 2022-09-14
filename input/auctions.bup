@@ -19,10 +19,6 @@ constraints:
         bidsAccepted[b] @bidsValues[b];
     };
 
-    //if (true or false and false) { // TODO escriure al informe
-    //    x;
-    //};
-
 output:
     "Bids:";
     ["#" ++ i ++ ": ({" ++ [ (bidsItems[i][j] ? (j ++ (j < nItems-1 ? ", " : "")) : "") | j in 0..nItems-1] ++ "}, " ++ bidsValues[i] ++ ")" ++ (i < nBids-1 ? "\n" : "") | i in 0..nBids-1];

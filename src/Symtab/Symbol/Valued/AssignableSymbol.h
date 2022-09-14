@@ -1,5 +1,6 @@
 //
 // Created by Roger Generoso Masós on 19/03/2020.
+// Modified by David Pérez Sánchez on 23/05/2022.
 //
 
 #ifndef CSP2SAT_ASSIGNABLESYMBOL_H

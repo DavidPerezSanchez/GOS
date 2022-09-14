@@ -1,5 +1,6 @@
 //
 // Created by Roger Generoso Masós on 30/03/2020.
+// Modified by David Pérez Sánchez on 25/07/2022.
 //
 
 #ifndef CSP2SAT_VISITORSUTILS_H
