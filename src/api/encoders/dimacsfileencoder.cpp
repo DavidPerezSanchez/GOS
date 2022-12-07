@@ -161,15 +161,11 @@ bool DimacsFileEncoder::optimize(int lb, int ub){
 	std::array<char, 512> buffer;
    std::string result;
 	clock_t begin_time = clock();
-<<<<<<< HEAD
-    std::shared_ptr<FILE> pipe(popen(getCall().c_str(),"r"), pclose);
-=======
 #ifdef _WIN32
 	std::shared_ptr<FILE> pipe(_popen((solver + " " + filename + " | grep -E '(^s )|(^v )'").c_str(), "r"), _pclose);
 #else
 	std::shared_ptr<FILE> pipe(popen((solver + " " + filename + " | grep -E '(^s )|(^v )'").c_str(), "r"), pclose);
 #endif
->>>>>>> master
     if (!pipe) throw std::runtime_error("popen() failed!");
     while (!feof(pipe.get())) {
         if (fgets(buffer.data(), 512, pipe.get()) != nullptr)
