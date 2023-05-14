@@ -8,6 +8,7 @@
 
 #include <exception>
 #include <string>
+#include <optional>
 #include "../Symtab/SymbolTable.h"
 
 namespace GOS {
